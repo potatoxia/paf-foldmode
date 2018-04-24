@@ -47,7 +47,7 @@ int main(int argc, char **argv)
 	  break;
 
 	case 'l':
-	  sscanf(optarg, "%lf", &length);
+	  sscanf(optarg, "%lf", &conf.length);
 	  break;
 	  
 	case 'n':
@@ -100,7 +100,7 @@ int main(int argc, char **argv)
   int ports[MPORT_NIC];
   for (i = 0; i < NPORT_NIC; i++)
     ports[i] = PORT_BASE + i;
-  if(init_capture(&conf, ip, ports, length, conf_fname) == EXIT_FAILURE)
+  if(init_capture(&conf, ip, ports, conf_fname) == EXIT_FAILURE)
     {
       fprintf (stderr, "Can not initialise the capture, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;      

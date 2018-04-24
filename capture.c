@@ -17,8 +17,6 @@
 #include "multilog.h"
 #include "paf_capture.h"
 
-// Check the code at 20180113/21 for the order thing;
-
 /* 
    The code drops much data frames, two options could be done:
    1. REUSEPORT, does not help;
@@ -198,7 +196,7 @@ int sock_sort(sock_t *sock)
   return EXIT_SUCCESS;
 }
 
-int init_capture(conf_t *conf, char *ip, int *ports, double length, char *conf_fname)
+int init_capture(conf_t *conf, char *ip, int *ports, char *conf_fname)
 {  
   int i;
   uint64_t tbufsz;
@@ -263,7 +261,7 @@ int init_capture(conf_t *conf, char *ip, int *ports, double length, char *conf_f
     }
 
   /* Get the end condition of capture */
-  acquire_hdr_end(conf->sock, length, active_ports);
+  acquire_hdr_end(conf->sock, conf->length, active_ports);
   
   /* Initialise the catpure status */
   for(i = 0; i < MPORT_NIC; i++)
@@ -350,7 +348,8 @@ int align_df(sock_t *sock, int active_ports)
 	  return EXIT_FAILURE;
 	}
       hdr_keys(df, &hdr_current);
-      hdr = ((hdr_current.idf + NDF_PRD * (hdr_current.sec - hdr.sec)/PRD_SEC) > hdr.idf) ? hdr_current : hdr;  
+      //hdr = ((hdr_current.idf + NDF_PRD * (hdr_current.sec - hdr.sec)/PRD_SEC) > hdr.idf) ? hdr_current : hdr;
+      hdr = ((hdr_current.idf + (hdr_current.sec - hdr.sec)/TDF_SEC) > hdr.idf) ? hdr_current : hdr;  
 #ifdef DEBUG
       //fprintf(stdout, "Current data frame is         %"PRIu64"\n", hdr_current.idf);
       fprintf(stdout, "The most recent data frame on port %d is second %"PRIu64", idf %"PRIu64"\n", ntohs(sock[i].sa.sin_port), hdr.sec, hdr.idf);
@@ -375,7 +374,8 @@ int align_df(sock_t *sock, int active_ports)
 	    }
 
 	  hdr_keys(df, &sock[i].hdr_start);
-	  if((sock[i].hdr_start.idf + NDF_PRD * (sock[i].hdr_start.sec - hdr.sec)/PRD_SEC) > hdr.idf)
+	  //if((sock[i].hdr_start.idf + NDF_PRD * (sock[i].hdr_start.sec - hdr.sec)/PRD_SEC) > hdr.idf)
+	  if((sock[i].hdr_start.idf + (sock[i].hdr_start.sec - hdr.sec)/TDF_SEC) > hdr.idf)
 	    break;
 	}
 #ifdef DEBUG
@@ -549,7 +549,8 @@ void *capture_thread(void *conf)
 int acquire_idf(hdr_t hdr, hdr_t hdr_ref, int64_t *idf)
 {
   //*idf = (int64_t)(hdr.idf + (hdr.sec - hdr_ref.sec)/PRD_SEC * NDF_PRD - hdr_ref.idf);
-  *idf = (int64_t)hdr.idf + (int64_t)(hdr.sec - hdr_ref.sec)/PRD_SEC * NDF_PRD - (int64_t)hdr_ref.idf;
+  //*idf = (int64_t)hdr.idf + (int64_t)(hdr.sec - hdr_ref.sec)/PRD_SEC * NDF_PRD - (int64_t)hdr_ref.idf;
+  *idf = (int64_t)hdr.idf + (int64_t)(hdr.sec - hdr_ref.sec) / TDF_SEC - (int64_t)hdr_ref.idf;
   return EXIT_SUCCESS;
 }
 
@@ -665,8 +666,14 @@ int acquire_hdr_end(sock_t *sock, double length, int active_ports)
   for(i = 0; i < active_ports; i++)
     {
       /* We stop at the first data frame, does not matter from which chunks */
-      sock[i].hdr_end.sec = (uint64_t)((int)(length/PRD_SEC) * PRD_SEC + sock[i].hdr_start.sec);
-      sock[i].hdr_end.idf = (uint64_t)((length - (int)(length/PRD_SEC) * PRD_SEC)/TDF_SEC) + sock[i].hdr_start.idf;
+      //sock[i].hdr_end.sec = (uint64_t)((int)(length/PRD_SEC) * PRD_SEC + sock[i].hdr_start.sec);
+      //sock[i].hdr_end.idf = (uint64_t)((length - (int)(length/PRD_SEC) * PRD_SEC)/TDF_SEC) + sock[i].hdr_start.idf;
+      //fprintf(stdout, "%"PRIu64"\t%"PRIu64"\n", sock[i].hdr_end.sec, sock[i].hdr_end.idf);
+      
+      sock[i].hdr_end.sec = (uint64_t)(length - fmod(length, PRD_SEC) + sock[i].hdr_start.sec);
+      sock[i].hdr_end.idf = (uint64_t)(fmod(length, PRD_SEC) / TDF_SEC) + sock[i].hdr_start.idf;
+      //fprintf(stdout, "%"PRIu64"\t%"PRIu64"\n", sock[i].hdr_end.sec, sock[i].hdr_end.idf);
+      
       if(sock[i].hdr_end.idf >= NDF_PRD)
 	{
 	  sock[i].hdr_end.sec = sock[i].hdr_end.sec + PRD_SEC;
@@ -690,7 +697,13 @@ int statistics(conf_t conf)
       sock = conf.sock[i];
       
       ndf_real = sock.ndf;
-      ndf_expected = (uint64_t)(sock.chunks * (sock.hdr_end.idf - sock.hdr_start.idf + NDF_PRD * (sock.hdr_end.sec - sock.hdr_start.sec)/PRD_SEC));
+      //ndf_expected = (uint64_t)(sock.chunks * (sock.hdr_end.idf - sock.hdr_start.idf + NDF_PRD * (sock.hdr_end.sec - sock.hdr_start.sec)/PRD_SEC));
+      //ndf_expected = (uint64_t)(sock.chunks * (sock.hdr_end.idf - sock.hdr_start.idf + (sock.hdr_end.sec - sock.hdr_start.sec)/TDF_SEC));
+      //ndf_expected = (uint64_t)(sock.chunks * (sock.hdr_end.idf - sock.hdr_start.idf + (sock.hdr_end.sec - sock.hdr_start.sec)/TDF_SEC));
+      ndf_expected = (uint64_t)(sock.chunks * conf.length/TDF_SEC);
+      
+      //fprintf(stdout, "%f\n", (sock.hdr_end.sec - sock.hdr_start.sec)/TDF_SEC);
+      
       fprintf(stdout, "%s\t%d\t%d\t%.3f\t%"PRIu64"\t\t%"PRIu64"\t%.1E\n", inet_ntoa(sock.sa.sin_addr), ntohs(sock.sa.sin_port), sock.chunks, sock.elapsed_time, ndf_expected, ndf_real, (double)((int64_t)(ndf_expected - ndf_real))/ndf_expected);
     }
   
@@ -791,14 +804,14 @@ int acquire_start_time(hdr_t hdr_start, char efname[MSTR_LEN], char utc_start[MS
   strftime (utc_start, MSTR_LEN, DADA_TIMESTR, gmtime(&sec)); // String start time without fraction second
 
   /* Faction of second */
-  picoseconds_f = 1.0E6 * (sec_prd - floor(sec_prd)); // We may have 1 picosecond deviation here;
+  picoseconds_f = 1.0E6 * (sec_prd - floor(sec_prd)); // We may have 1 picosecond deviation here, round to intergal will fix that;
   *picoseconds = 1E6 * round(picoseconds_f); // We know for sure that the timing resolution is 108 microsecond, we can not get finer timing stamps than 1 microsecond;
   
 #ifdef DEBUG
   fprintf(stdout, "UTC_START:\t%s\n\n", utc_start);
 #endif
 
-  fprintf(stdout, "SECOND_IN_PERIOD:\t%.12f\tUTC_START:\t%s\tPICOSECONDS:\t%"PRIu64"\tMICROSECONDS:\t%.10f\n", sec_prd, utc_start, *picoseconds, picoseconds_f);
+  fprintf(stdout, "SECOND_IN_PERIOD:\t%.12f\tUTC_START:\t%s\tMICROSECONDS:\t%.10f\tPICOSECONDS:\t%"PRIu64"\n", sec_prd, utc_start, picoseconds_f, *picoseconds);
   
   return EXIT_SUCCESS;
 }

@@ -75,6 +75,8 @@ typedef struct conf_t
   double freq;
   char hfname[MSTR_LEN];
   char efname[MSTR_LEN];
+
+  double length;
   
   struct sock_t sock[MPORT_NIC];
 }conf_t;
@@ -97,7 +99,7 @@ void *capture_thread(void *conf);
 int statistics(conf_t conf);
 
 int init_rbuf(conf_t *conf);
-int init_capture(conf_t *conf, char *ip, int *ports, double length, char *conf_fname);
+int init_capture(conf_t *conf, char *ip, int *ports, char *conf_fname);
 int register_header(conf_t *conf);
 int acquire_start_time(hdr_t hdr_start, char efname[MSTR_LEN], char utc_start[MSTR_LEN], uint64_t *picoseconds);
 #endif
