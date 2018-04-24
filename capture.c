@@ -232,7 +232,7 @@ int init_capture(conf_t *conf, char *ip, int *ports, char *conf_fname)
     }
 #ifdef DEBUG
   clock_gettime(CLOCK_REALTIME, &stop);
-  elapsed_time = (stop.tv_sec - start.tv_sec) + (stop.tv_nsec - start.tv_nsec)/1000000000.0L;
+  elapsed_time = (stop.tv_sec - start.tv_sec) + (stop.tv_nsec - start.tv_nsec)/1.0E9L;
   fprintf(stdout, "%f seconds used for the ring buffer initialisation\n", elapsed_time);
   fprintf(stdout, "End of the initialise\n\n");
 #endif
