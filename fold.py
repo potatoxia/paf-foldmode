@@ -59,7 +59,8 @@ cfname       = args.cfname[0]
 numa         = args.numa[0]
 length       = args.length[0]
 nic          = numa + 1
-first_final  = args.first_final
+first_final  = args.first_final[0]
+print first_final
 
 # Play with configuration file
 Config = ConfigParser.ConfigParser()
