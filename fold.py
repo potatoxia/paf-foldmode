@@ -5,7 +5,7 @@
 # I made assumption here:
 # 1. scale calculation uses only one buffer block, no matter how big the block is;
 # 2. numa node index is 0 and 1, nic ip end with 1 and 2, gpu index is 0 and 1;
-# ./fold.py -d 0 -n 1 -c fold.conf -l 3600
+# ./fold.py -d 0 -n 1 -c fold.conf -l 3600 -f 2
 
 import os, time, threading, ConfigParser, argparse, socket, json, struct, sys
 
@@ -50,13 +50,16 @@ parser.add_argument('-n', '--numa', type=int, nargs='+',
                     help='On which numa node we do the work, 0 or 1')
 parser.add_argument('-l', '--length', type=float, nargs='+',
                 help='Length of data receiving')
+parser.add_argument('-f', '--first_final', type=int, nargs='+',
+                    help='First run or final run, 0 for first run and create shared memory, 1 for last run and destroy shared memory, the rest does nothing')
 
-args   = parser.parse_args()
-debug  = args.debug[0]
-cfname = args.cfname[0]
-numa   = args.numa[0]
-length = args.length[0]
-nic    = numa + 1
+args         = parser.parse_args()
+debug        = args.debug[0]
+cfname       = args.cfname[0]
+numa         = args.numa[0]
+length       = args.length[0]
+nic          = numa + 1
+first_final  = args.first_final
 
 # Play with configuration file
 Config = ConfigParser.ConfigParser()
@@ -130,34 +133,40 @@ def capture():
     os.system("./paf_capture -k {:s} -l {:f} -n {:d} -h {:s} -f {:f} -e {:s} -s {:s} -r {:d} -d 0".format(capture_key, length, nic, capture_hfname, freq, capture_efname, capture_sod, capture_ndf))
 
 def process():
+    time.sleep(0.5 * sleep_time)
     if debug:
         os.system('taskset -c {:d} ./paf_process -i {:s} -o {:s} -c {:d} -d {:d} -s {:s} -h {:s} -n {:d} -p {:d} -f {:s} -b {:d} -g 1'.format(process_cpu, capture_key, process_key, capture_ndf, numa, process_sod, process_hfname, process_nstream, process_ndf, process_dir, nrun_blk))
     else:
         os.system('taskset -c {:d} ./paf_process -i {:s} -o {:s} -c {:d} -d {:d} -s {:s} -h {:s} -n {:d} -p {:d} -f {:s} -b {:d} -g 0'.format(process_cpu, capture_key, process_key, capture_ndf, numa, process_sod, process_hfname, process_nstream, process_ndf, process_dir, nrun_blk))
         
 def fold_with_second_ringbuf():
+    # Create key files
+    # For current version, we only need to create share memory at the first time
+    # and destroy share memory at the last time
+    # this will save prepare time for the pipeline as well
     process_key_file = open(process_kfname, "w")
     process_key_file.writelines("DADA INFO:\n")
     process_key_file.writelines("key {:s}\n".format(process_key))
     process_key_file.close()
 
-    os.system("dada_db -l -p -k {:s} -b {:d} -n {:s} -r {:s}".format(process_key, process_rbufsz, process_nbuf, process_nreader))
-    #os.system('dspsr -cpu {:d} -E {:s} {:s} -cuda {:d},{:d},{:d},{:d} -L {:d} -A'.format(fold_cpu, pfname, process_kfname, numa, numa, numa, numa, subint))
+    if(first_final == 0):
+        os.system("dada_db -l -p -k {:s} -b {:d} -n {:s} -r {:s}".format(process_key, process_rbufsz, process_nbuf, process_nreader))
     os.system('dspsr -cpu {:d} -E {:s} {:s} -cuda {:d},{:d} -L {:d} -A'.format(fold_cpu, pfname, process_kfname, numa, numa, subint))
-    os.system("dada_db -k {:s} -d".format(process_key))
+    if(first_final == 1):
+        os.system("dada_db -k {:s} -d".format(process_key))
     
 def capture_process_with_first_ringbuf():
     # Create key files
+    # For current version, we only need to create share memory at the first time
+    # and destroy share memory at the last time
+    # this will save prepare time for the pipeline as well
     capture_key_file = open(capture_kfname, "w")
     capture_key_file.writelines("DADA INFO:\n")
     capture_key_file.writelines("key {:s}\n".format(capture_key))
     capture_key_file.close()
 
-    #start_time = time.time()
-    os.system("dada_db -l -p -k {:s} -b {:d} -n {:s} -r {:s}".format(capture_key, capture_rbufsz, capture_nbuf, capture_nreader))
-    #time.sleep(sleep_time)
-    #end_time = time.time()
-    #print "{:f} seconds".format(end_time - start_time)
+    if(first_final == 0):
+        os.system("dada_db -l -p -k {:s} -b {:d} -n {:s} -r {:s}".format(capture_key, capture_rbufsz, capture_nbuf, capture_nreader))
     
     # Start threads
     t_process = threading.Thread(target = process)
@@ -175,8 +184,9 @@ def capture_process_with_first_ringbuf():
         t_diskdb.join()
     else:
         t_capture.join()
-    os.system("dada_db -k {:s} -d".format(capture_key))
-    
+    if(first_final == 1):
+        os.system("dada_db -k {:s} -d".format(capture_key))
+        
 def main():
     t_first = threading.Thread(target = capture_process_with_first_ringbuf)
     t_second = threading.Thread(target = fold_with_second_ringbuf)
