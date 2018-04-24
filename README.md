@@ -15,3 +15,5 @@ To use the pipeline, fold.py -c fold.conf -d 0 -n 0 -l 10 -f 0 fold.conf defines
 The configuration fold.conf here is specified for the Effelsberg Phased Array Feed GPU cluster, you need to update the configuration file accordingly if you want to reuse the code somewhere else (you can find the detail of each parameter in the file). You also need to check your IP address and port number, and if it is necessary, please undate it at capture.c.
 
 rebuild.py should recompile the capture (paf-capture) and pre-process (paf-process) part (rebuild.py 0 tell program not print out debug information, rebuild.py 1 will enable debug information printout), you need to install dspsr and psrdada on your system. Here we use GPU to accelerate the folding process and make the whole pipeline runs in real-time, if you want to do so, please make sure that your dspsr works with CUDA (check here for detail http://dspsr.sourceforge.net/manuals/dspsr/gpu.shtml), otherwise just remove the -cuda ooption and associated parameters from fold.py.
+
+More detail for myself reference. It uses UTC_START and PICOSECONDS to determine the precise start time of observation.
