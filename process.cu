@@ -273,22 +273,22 @@ int init_process(char *conf_fname, conf_t *conf)
       return EXIT_FAILURE;
     }
 
-  if(conf->sod)
-    {      
-      if(ipcbuf_enable_sod(db, 0, 0) < 0)  // We start at the beginning
-  	{
-  	  fprintf(stderr, "Can not write data before start, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
-  	  return EXIT_FAILURE;
-  	}
-    }
-  else
-    {
-      if(ipcbuf_disable_sod(db) < 0)
-  	{
-  	  fprintf(stderr, "Can not write data before start, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
-  	  return EXIT_FAILURE;
-  	}
-    }
+  //if(conf->sod)
+  //  {      
+  //    if(ipcbuf_enable_sod(db, 0, 0) < 0)  // We start at the beginning
+  //	{
+  //	  fprintf(stderr, "Can not write data before start, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+  //	  return EXIT_FAILURE;
+  //	}
+  //  }
+  //else
+  //  {
+  //    if(ipcbuf_disable_sod(db) < 0)
+  //	{
+  //	  fprintf(stderr, "Can not write data before start, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+  //	  return EXIT_FAILURE;
+  //	}
+  //  }
       
   /* Register header */
   if(register_header(conf))

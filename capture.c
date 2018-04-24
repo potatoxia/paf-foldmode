@@ -302,9 +302,9 @@ int init_capture(conf_t *conf, char *ip, int *ports, char *conf_fname)
     }
 
   /* Get the buffer block ready */
-  //uint64_t block_id = 0;
-  //cbuf = ipcio_open_block_write(conf->hdu->data_block, &block_id);
-  cbuf = ipcbuf_get_next_write ((ipcbuf_t*)conf->hdu->data_block);
+  uint64_t block_id = 0;
+  cbuf = ipcio_open_block_write(conf->hdu->data_block, &block_id);
+  //cbuf = ipcbuf_get_next_write ((ipcbuf_t*)conf->hdu->data_block);
   
   return EXIT_SUCCESS;
 }
@@ -608,22 +608,22 @@ int init_rbuf(conf_t *conf)
       return EXIT_FAILURE;
     }
 
-  if(conf->sod)
-    {      
-      if(ipcbuf_enable_sod((ipcbuf_t *)db, 0, 0) < 0)  // We start at the beginning
-  	{
-  	  fprintf(stderr, "Can not write data before start, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
-  	  return EXIT_FAILURE;
-  	}
-    }
-  else
-    {
-      if(ipcbuf_disable_sod((ipcbuf_t *)db) < 0)
-  	{
-  	  fprintf(stderr, "Can not write data before start, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
-  	  return EXIT_FAILURE;
-  	}
-    }
+  //if(conf->sod)
+  //  {      
+  //    if(ipcbuf_enable_sod((ipcbuf_t *)db, 0, 0) < 0)  // We start at the beginning
+  //	{
+  //	  fprintf(stderr, "Can not write data before start, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+  //	  return EXIT_FAILURE;
+  //	}
+  //  }
+  //else
+  //  {
+  //    if(ipcbuf_disable_sod((ipcbuf_t *)db) < 0)
+  //	{
+  //	  fprintf(stderr, "Can not write data before start, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+  //	  return EXIT_FAILURE;
+  //	}
+  //  }
 
   return EXIT_SUCCESS;
 }
