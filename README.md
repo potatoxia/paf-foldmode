@@ -10,7 +10,7 @@ Data pre-porcessing part, which a. Reorder the data into PFT order; b. 32-points
 
 Dspsr to process and fold the data from step 2;
 
-To use the pipeline, fold.py -c fold.conf -d 0 -n 0 -l 10 -f 0 fold.conf defines basic fold parameters; -d tell the pipeline to print out debug information or not (more detail debug information can be enabled at compile, see later); -n tell the pipeline to linse to which NiC; -l tell the pipeline to linse on the NiC on how long, -f tell the pipeline to create shared memory if it is the first time you run it or destroy shared memory if it is the last time you run it;
+To use the pipeline, fold.py -c fold.conf -d 0 -n 0 -l 10 -f 0 fold.conf defines basic fold parameters; -d tell the pipeline to print out debug information or not (more detail debug information can be enabled at compile, see later); -n tell the pipeline to linse to which NiC; -l tell the pipeline to linse on the NiC on how long, -f tell the pipeline to create shared memory if it is the first time you run it (-f 0), destroy shared memory if it is the last time you run it (-f 1) or do not do anything to shared memory;
 
 The configuration fold.conf here is specified for the Effelsberg Phased Array Feed GPU cluster, you need to update the configuration file accordingly if you want to reuse the code somewhere else (you can find the detail of each parameter in the file). You also need to check your IP address and port number, and if it is necessary, please undate it at capture.c.
 
