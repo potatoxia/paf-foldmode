@@ -52,7 +52,7 @@ pthread_mutexattr_t force_switch_mutex_attr;
 pthread_mutex_t hdr_ref_mutex[MPORT_NIC] = {PTHREAD_MUTEX_INITIALIZER};
 pthread_mutexattr_t hdr_ref_mutex_attr[MPORT_NIC];
 
-int check_connection(sock_t *sock, int *active_ports, int *active_chunks)
+int check_connection(sock_t *sock, int *active_ports, int *active_chunks, multilog_t *log)
 {
   int i, j, k, duplicate, chunk_index;
   double freq;
@@ -85,7 +85,8 @@ int check_connection(sock_t *sock, int *active_ports, int *active_chunks)
 	{
 	  if (recv(sock[i].sock, (void *)df, DF_SIZE, 0) < 0)
 	    // If the size is -1, means we get time out and the port is not active
-	    {	  
+	    {
+	      multilog(log, LOG_INFO, "Can not receive data from %s:%d, which happens at \"%s\", line [%d].\n", inet_ntoa(sock[i].sa.sin_addr), ntohs(sock[i].sa.sin_port), __FILE__, __LINE__);
 	      fprintf (stderr, "Can not receive data from %s:%d, which happens at \"%s\", line [%d].\n", inet_ntoa(sock[i].sa.sin_addr), ntohs(sock[i].sa.sin_port), __FILE__, __LINE__);
 	      sock[i].active = 0;
 	      (*active_ports)--;
@@ -98,6 +99,7 @@ int check_connection(sock_t *sock, int *active_ports, int *active_chunks)
 	      
 	      if(freq==0)    // Frequency can not be zero
 		{
+		  multilog(log, LOG_INFO, "The data received on %s:%d is not right, which happens at \"%s\", line [%d].\n", inet_ntoa(sock[i].sa.sin_addr), ntohs(sock[i].sa.sin_port), __FILE__, __LINE__);
 		  fprintf (stderr, "The data received on %s:%d is not right, which happens at \"%s\", line [%d].\n", inet_ntoa(sock[i].sa.sin_addr), ntohs(sock[i].sa.sin_port), __FILE__, __LINE__);
 		  return EXIT_FAILURE;
 		}
@@ -139,7 +141,7 @@ int check_connection(sock_t *sock, int *active_ports, int *active_chunks)
   return EXIT_SUCCESS;
 }
 
-int init_sockets(sock_t *sock, char *ip, int *ports)
+int init_sockets(sock_t *sock, char *ip, int *ports, multilog_t *log)
 {  
   int i;
   struct timeval time_out={PRD_SEC, 0}; 
@@ -160,6 +162,7 @@ int init_sockets(sock_t *sock, char *ip, int *ports)
       
       if (-1 == bind(sock[i].sock, (struct sockaddr *)&sock[i].sa, sizeof(sock[i].sa)))
 	{
+	  multilog(log, LOG_INFO, "Bind to %s:%d failed, which happens at \"%s\", line [%d].\n", inet_ntoa(sock[i].sa.sin_addr), ntohs(sock[i].sa.sin_port), __FILE__, __LINE__);
 	  fprintf (stderr, "Bind to %s:%d failed, which happens at \"%s\", line [%d].\n", inet_ntoa(sock[i].sa.sin_addr), ntohs(sock[i].sa.sin_port), __FILE__, __LINE__);
 	  close(sock[i].sock);
 	  sock[i].active = 0;
@@ -196,7 +199,7 @@ int sock_sort(sock_t *sock)
   return EXIT_SUCCESS;
 }
 
-int init_capture(conf_t *conf, char *ip, int *ports, char *conf_fname)
+int init_capture(conf_t *conf, char *ip, int *ports)
 {  
   int i;
   uint64_t tbufsz;
@@ -226,7 +229,8 @@ int init_capture(conf_t *conf, char *ip, int *ports, char *conf_fname)
 #endif
   
   if(init_rbuf(conf) == EXIT_FAILURE)
-    {      
+    {
+      multilog(conf->log, LOG_INFO, "Can not initialise ring buffer, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       fprintf(stderr, "Can not initialise ring buffer, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
@@ -238,15 +242,17 @@ int init_capture(conf_t *conf, char *ip, int *ports, char *conf_fname)
 #endif
     
   /* Initialise sockets */
-  if(init_sockets(conf->sock, ip, ports) == EXIT_FAILURE)
+  if(init_sockets(conf->sock, ip, ports, conf->log) == EXIT_FAILURE)
     {
+      multilog(conf->log, LOG_INFO, "Can not initialise sockets, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       fprintf (stderr, "Can not initialise sockets, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
   
   /* Check the available ports and frequency chunks */
-  if(check_connection(conf->sock, &active_ports, &active_chunks) == EXIT_FAILURE)
+  if(check_connection(conf->sock, &active_ports, &active_chunks, conf->log) == EXIT_FAILURE)
     {
+      multilog(conf->log, LOG_INFO, "Can not check the connection, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       fprintf (stderr, "Can not check the connection, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }  
@@ -254,8 +260,9 @@ int init_capture(conf_t *conf, char *ip, int *ports, char *conf_fname)
   conf->active_chunks = active_chunks;
     
   /* Align data frames from different sockets, which will make futhre work easier */
-  if(align_df(conf->sock, active_ports) == EXIT_FAILURE)
+  if(align_df(conf->sock, active_ports, conf->log) == EXIT_FAILURE)
     {
+      multilog(conf->log, LOG_INFO, "Can not align data frames, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       fprintf (stderr, "Can not align data frames, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE; 
     }
@@ -294,9 +301,10 @@ int init_capture(conf_t *conf, char *ip, int *ports, char *conf_fname)
   for(i = 0; i < NPORT_NIC; i++)  // Get the active sock
     if(conf->sock[i].active)
       break;
-  acquire_start_time(conf->sock[i].hdr_start, conf->efname, conf->utc_start, &(conf->picoseconds));
+  acquire_start_time(conf->sock[i].hdr_start, conf->efname, conf->utc_start, &(conf->picoseconds), conf->log);
   if(register_header(conf))
     {
+      multilog(conf->log, LOG_INFO, "Header register failed, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       fprintf(stderr, "Header register failed, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
@@ -314,13 +322,13 @@ int init_capture(conf_t *conf, char *ip, int *ports, char *conf_fname)
    2. Find out most recent data frame among different sockets;
    3. Push the socket forward until all sockets drops the most recent data frame;
    4. The most recent data frame will be the reference one for data capture;
-   5. Recent the information about the most recent data frame for later use;
+   5. Record the information about the most recent data frame for later use;
    We do not need to start at the reference data frame for real data capture as we use header to locate all captured data frames;
 
    The above is for original design, now we do not need to force all threads start at the same data frame;
    So the mean of this function is that we can get a reference hdr for later use;
 */
-int align_df(sock_t *sock, int active_ports)
+int align_df(sock_t *sock, int active_ports, multilog_t *log)
 {
   int i;
   hdr_t hdr, hdr_current;
@@ -342,6 +350,7 @@ int align_df(sock_t *sock, int active_ports)
       if (recv(sock[i].sock, (void *)df, DF_SIZE, 0) < 0)
 	// If the size is -1, means we get time out and the port is not active
 	{
+	  multilog(log, LOG_INFO, "Can not receive data from %s:%d, which happens at \"%s\", line [%d].\n", inet_ntoa(sock[i].sa.sin_addr), ntohs(sock[i].sa.sin_port), __FILE__, __LINE__);
 	  fprintf (stderr, "Can not receive data from %s:%d, which happens at \"%s\", line [%d].\n", inet_ntoa(sock[i].sa.sin_addr), ntohs(sock[i].sa.sin_port), __FILE__, __LINE__);
 	  sock[i].active = 0;
 	  close(sock[i].sock);
@@ -367,6 +376,7 @@ int align_df(sock_t *sock, int active_ports)
 	  if (recv(sock[i].sock, (void *)df, DF_SIZE, 0) < 0)
 	    // If the size is -1, means we get time out and the port is not active
 	    {
+	      multilog(log, LOG_INFO, "Can not receive data from %s:%d, which happens at \"%s\", line [%d].\n", inet_ntoa(sock[i].sa.sin_addr), ntohs(sock[i].sa.sin_port), __FILE__, __LINE__);
 	      fprintf (stderr, "Can not receive data from %s:%d, which happens at \"%s\", line [%d].\n", inet_ntoa(sock[i].sa.sin_addr), ntohs(sock[i].sa.sin_port), __FILE__, __LINE__);
 	      sock[i].active = 0;
 	      close(sock[i].sock);
@@ -425,6 +435,7 @@ void *capture_thread(void *conf)
     {      
       if(recvfrom(sock.sock, (void *)df, DF_SIZE, 0, (struct sockaddr *)&sa, &fromlen) == -1)
 	{
+	  multilog(captureconf->log, LOG_INFO,  "Can not receive data from %s:%d, which happens at \"%s\", line [%d].\n", inet_ntoa(sock.sa.sin_addr), ntohs(sock.sa.sin_port), __FILE__, __LINE__);
 	  fprintf (stderr, "Can not receive data from %s:%d, which happens at \"%s\", line [%d].\n", inet_ntoa(sock.sa.sin_addr), ntohs(sock.sa.sin_port), __FILE__, __LINE__);
 
 	  /* Force to quit if we have time out */
@@ -579,23 +590,21 @@ int init_rbuf(conf_t *conf)
     
   if (dada_hdu_connect(conf->hdu) < 0)
     {
-      multilog(conf->log, LOG_ERR, "could not connect to hdu\n");
+      multilog(conf->log, LOG_ERR, "Can not connect to hdu, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       fprintf (stderr, "Can not connect to hdu, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;    
     }
   db = (ipcbuf_t *) conf->hdu->data_block;
   if(conf->rbufsz != ipcbuf_get_bufsz((ipcbuf_t *)db))  
     {
-      fprintf(stdout, "%zu\t%zu\n", conf->rbufsz, ipcbuf_get_bufsz((ipcbuf_t *)db));
-      
-      multilog(conf->log, LOG_ERR, "data buffer size mismatch\n");
+      multilog(conf->log, LOG_ERR, "Buffer size mismatch, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       fprintf (stderr, "Buffer size mismatch, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;    
     }
   
   if(ipcbuf_get_bufsz(conf->hdu->header_block) != DADA_HDR_SIZE)    // This number should match
     {
-      multilog(conf->log, LOG_ERR, "data buffer size mismatch\n");
+      multilog(conf->log, LOG_ERR, "Buffer size mismatch, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       fprintf (stderr, "Buffer size mismatch, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;    
     }
@@ -603,7 +612,7 @@ int init_rbuf(conf_t *conf)
   /* make ourselves the write client */
   if (dada_hdu_lock_write (conf->hdu) < 0)
     {
-      multilog (conf->log, LOG_ERR, "open_hdu: could not lock write\n");
+      multilog (conf->log, LOG_ERR, "Error locking HDU, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       fprintf(stderr, "Error locking HDU, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
@@ -612,6 +621,7 @@ int init_rbuf(conf_t *conf)
   //  {      
   //    if(ipcbuf_enable_sod((ipcbuf_t *)db, 0, 0) < 0)  // We start at the beginning
   //	{
+  //  multilog (conf->log, "Can not write data before start, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
   //	  fprintf(stderr, "Can not write data before start, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
   //	  return EXIT_FAILURE;
   //	}
@@ -620,6 +630,7 @@ int init_rbuf(conf_t *conf)
   //  {
   //    if(ipcbuf_disable_sod((ipcbuf_t *)db) < 0)
   //	{
+  //multilog (conf->log, "Can not write data before start, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
   //	  fprintf(stderr, "Can not write data before start, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
   //	  return EXIT_FAILURE;
   //	}
@@ -629,7 +640,7 @@ int init_rbuf(conf_t *conf)
 }
 
 int destroy_capture(conf_t conf)
-{
+{  
   free(tbuf);
   destroy_sockets(conf.sock);
   
@@ -644,7 +655,7 @@ int destroy_capture(conf_t conf)
   dada_hdu_unlock_write(conf.hdu);
   dada_hdu_disconnect(conf.hdu);
   dada_hdu_destroy(conf.hdu);
-    
+
   return EXIT_SUCCESS;
 }
 
@@ -691,6 +702,7 @@ int statistics(conf_t conf)
   uint64_t ndf_real;
   sock_t sock;
 
+  multilog(conf.log, LOG_INFO, "Address\t\tPort\tChunks\tElapsed\tExpected\tReal\tLoss\n");
   fprintf(stdout, "\nAddress\t\tPort\tChunks\tElapsed\tExpected\tReal\tLoss\n");
   for(i = 0; i < conf.active_ports; i++)
     {
@@ -703,7 +715,7 @@ int statistics(conf_t conf)
       ndf_expected = (uint64_t)(sock.chunks * conf.length/TDF_SEC);
       
       //fprintf(stdout, "%f\n", (sock.hdr_end.sec - sock.hdr_start.sec)/TDF_SEC);
-      
+      multilog(conf.log, LOG_INFO, "%s\t\t%d\t%d\t%.3f\t%"PRIu64"\t\t%"PRIu64"\t%.1E\n", inet_ntoa(sock.sa.sin_addr), ntohs(sock.sa.sin_port), sock.chunks, sock.elapsed_time, ndf_expected, ndf_real, (double)((int64_t)(ndf_expected - ndf_real))/ndf_expected);
       fprintf(stdout, "%s\t%d\t%d\t%.3f\t%"PRIu64"\t\t%"PRIu64"\t%.1E\n", inet_ntoa(sock.sa.sin_addr), ntohs(sock.sa.sin_port), sock.chunks, sock.elapsed_time, ndf_expected, ndf_real, (double)((int64_t)(ndf_expected - ndf_real))/ndf_expected);
     }
   
@@ -719,7 +731,7 @@ int register_header(conf_t *conf)
   hdrbuf = ipcbuf_get_next_write (conf->hdu->header_block);
   if (!hdrbuf)
     {
-      multilog(conf->log, LOG_ERR, "get next header block error.\n");
+      multilog(conf->log, LOG_ERR, "Error getting header_buf, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       fprintf(stderr, "Error getting header_buf, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
@@ -727,21 +739,23 @@ int register_header(conf_t *conf)
   /* if header file is presented, use it. If not set command line attributes */ 
   if (!conf->hfname)
     {
+      multilog(conf->log, LOG_ERR, "Please specify header file, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       fprintf(stderr, "Please specify header file, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
   
   if (fileread(conf->hfname, hdrbuf, DADA_HDR_SIZE) < 0)
     {
-      multilog(conf->log, LOG_ERR, "cannot read header from %s\n", conf->hfname);
+      multilog(conf->log, LOG_ERR, "Error reading header file, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       fprintf(stderr, "Error reading header file, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
 
-  fprintf(stdout, "Setup UTC_START at capture stage:\t%s\n", conf->utc_start);
+  //multilog(conf->log, LOG_INFO, "UTC_START:\t%s\n", conf->utc_start);
+  //fprintf(stdout, "Setup UTC_START at capture stage:\t%s\n", conf->utc_start);
   if (ascii_header_set(hdrbuf, "UTC_START", "%s", conf->utc_start) < 0)  // Here we only set the UTC with integer period, not set MJD. fraction of period is shown as obs_offset
     {
-      multilog(conf->log, LOG_ERR, "failed ascii_header_set UTC_START\n");
+      multilog(conf->log, LOG_ERR, "Error setting UTC_START, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       fprintf(stderr, "Error setting UTC_START, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
@@ -749,14 +763,14 @@ int register_header(conf_t *conf)
   //if (ascii_header_set(hdrbuf, "PICOSECONDS", "%"PRIu64"", conf->picoseconds) < 0)  // Here we only set the UTC with integer period, not set MJD. fraction of period is shown as obs_offset
   if (ascii_header_set(hdrbuf, "PICOSECONDS", "%"PRIu64, conf->picoseconds) < 0)  // Here we only set the UTC with integer period, not set MJD. fraction of period is shown as obs_offset
     {
-      multilog(conf->log, LOG_ERR, "failed ascii_header_set PICOSECONDS\n");
+      multilog(conf->log, LOG_ERR, "Error setting PICOSECONDS, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       fprintf(stderr, "Error setting PICOSECONDS, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
     
   if (ascii_header_set(hdrbuf, "FREQ", "%.1lf", conf->freq) < 0)
     {
-      multilog(conf->log, LOG_ERR, "failed ascii_header_set FREQ\n");
+      multilog(conf->log, LOG_ERR, "Error setting FREQ, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       fprintf(stderr, "Error setting FREQ, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
@@ -764,7 +778,7 @@ int register_header(conf_t *conf)
   /* donot set header parameters anymore - acqn. doesn't start */
   if (ipcbuf_mark_filled (conf->hdu->header_block, DADA_HDR_SIZE) < 0)
     {
-      multilog(conf->log, LOG_ERR, "Could not mark filled header block\n");
+      multilog(conf->log, LOG_ERR, "Error header_fill, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       fprintf(stderr, "Error header_fill, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
@@ -772,17 +786,18 @@ int register_header(conf_t *conf)
   return EXIT_SUCCESS;
 }
 
-int acquire_start_time(hdr_t hdr_start, char efname[MSTR_LEN], char utc_start[MSTR_LEN], uint64_t *picoseconds)
+int acquire_start_time(hdr_t hdr_start, char efname[MSTR_LEN], char utc_start[MSTR_LEN], uint64_t *picoseconds, multilog_t *log)
 {
   int epoch;
   FILE *fp = NULL;
   char line[MSTR_LEN];
   time_t sec;
-  double sec_prd, mjd_epoch, picoseconds_f;
+  double sec_prd, mjd_epoch, micoseconds;
   
   fp = fopen(efname, "r");
   if(fp == NULL)
     {
+      multilog(log, LOG_ERR, "Can not open epoch file: %s, which happens at \"%s\", line [%d].\n", efname, __FILE__, __LINE__);
       fprintf(stderr, "Can not open epoch file: %s, which happens at \"%s\", line [%d].\n", efname, __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
@@ -804,14 +819,23 @@ int acquire_start_time(hdr_t hdr_start, char efname[MSTR_LEN], char utc_start[MS
   strftime (utc_start, MSTR_LEN, DADA_TIMESTR, gmtime(&sec)); // String start time without fraction second
 
   /* Faction of second */
-  picoseconds_f = 1.0E6 * (sec_prd - floor(sec_prd)); // We may have 1 picosecond deviation here, round to intergal will fix that;
-  *picoseconds = 1E6 * round(picoseconds_f); // We know for sure that the timing resolution is 108 microsecond, we can not get finer timing stamps than 1 microsecond;
+  micoseconds  = 1.0E6 * (sec_prd - floor(sec_prd)); // We may have 1 picosecond deviation here, round to intergal will fix that;
+  *picoseconds = 1E6 * round(micoseconds); // We know for sure that the timing resolution is 108 microsecond, we can not get finer timing stamps than 1 microsecond;
   
 #ifdef DEBUG
   fprintf(stdout, "UTC_START:\t%s\n\n", utc_start);
 #endif
 
-  fprintf(stdout, "SECOND_IN_PERIOD:\t%.12f\tUTC_START:\t%s\tMICROSECONDS:\t%.10f\tPICOSECONDS:\t%"PRIu64"\n", sec_prd, utc_start, picoseconds_f, *picoseconds);
+  multilog(log, LOG_INFO, "SEC_START:\t%"PRIu64"\n", hdr_start.sec);
+  multilog(log, LOG_INFO, "IDF_START:\t%"PRIu64"\n", hdr_start.idf);
+    
+  multilog(log, LOG_INFO, "SECOND_IN_PERIOD:\t%.12f\n", sec_prd);
+  multilog(log, LOG_INFO, "MICROSECONDS:\t%f\n", micoseconds);
+  
+  multilog(log, LOG_INFO, "UTC_START:\t%s\n", utc_start);
+  multilog(log, LOG_INFO, "PICOSECONDS:\t%"PRIu64"\n", *picoseconds);
+  
+  fprintf(stdout, "SECOND_IN_PERIOD:\t%.12f\tUTC_START:\t%s\tMICROSECONDS:\t%f\tPICOSECONDS:\t%"PRIu64"\n", sec_prd, utc_start, micoseconds, *picoseconds);
   
   return EXIT_SUCCESS;
 }

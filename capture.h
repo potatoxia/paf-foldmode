@@ -76,6 +76,7 @@ typedef struct conf_t
   char hfname[MSTR_LEN];
   char efname[MSTR_LEN];
 
+  FILE *fp_log;
   double length;
   
   struct sock_t sock[MPORT_NIC];
@@ -85,12 +86,12 @@ int acquire_ifreq(struct sockaddr_in sa, int *ifreq);
 int acquire_idf(hdr_t hdr, hdr_t hdr_ref, int64_t *idf);
 int acquire_hdr_end(sock_t *sock, double length, int active_ports);
 
-int init_sockets(sock_t *sock, char *ip, int *ports);
+int init_sockets(sock_t *sock, char *ip, int *ports, multilog_t *log);
 //int init_rbuf(uint64_t rbufsz, int nbufs, key_t key);
 
-int check_connection(sock_t *sock, int *active_ports, int *active_chunks);
+int check_connection(sock_t *sock, int *active_ports, int *active_chunks, multilog_t *log);
 int sock_sort(sock_t *sock);
-int align_df(sock_t *sock, int active_ports);
+int align_df(sock_t *sock, int active_ports, multilog_t *log);
 
 int destroy_capture(conf_t conf);
 int destroy_sockets(sock_t *sock);
@@ -99,7 +100,7 @@ void *capture_thread(void *conf);
 int statistics(conf_t conf);
 
 int init_rbuf(conf_t *conf);
-int init_capture(conf_t *conf, char *ip, int *ports, char *conf_fname);
+int init_capture(conf_t *conf, char *ip, int *ports);
 int register_header(conf_t *conf);
-int acquire_start_time(hdr_t hdr_start, char efname[MSTR_LEN], char utc_start[MSTR_LEN], uint64_t *picoseconds);
+int acquire_start_time(hdr_t hdr_start, char efname[MSTR_LEN], char utc_start[MSTR_LEN], uint64_t *picoseconds, multilog_t *log);
 #endif

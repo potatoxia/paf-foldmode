@@ -75,6 +75,7 @@ typedef struct conf_t
   key_t key_out, key_in;
   dada_hdu_t *hdu_out, *hdu_in;
   multilog_t *log;                // DADA logging interface
+  FILE *fp_log;
   
   char *hdrbuf_in, *hdrbuf_out;
   int64_t *dbuf_in;
@@ -122,7 +123,7 @@ typedef struct conf_t
   dim3 gridsize_transpose_float, blocksize_transpose_float;
 }conf_t; 
 
-int init_process(char *conf_fname, conf_t *conf);
+int init_process(conf_t *conf);
 int do_process(conf_t conf);
 int dat_offs_scl(conf_t conf);
 int register_header(conf_t *conf);

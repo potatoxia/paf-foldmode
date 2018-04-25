@@ -13,7 +13,7 @@
 #include "cudautil.cuh"
 #include "kernel.cuh"
 
-int init_process(char *conf_fname, conf_t *conf)
+int init_process(conf_t *conf)
 {
   CudaSafeCall(cudaSetDevice(conf->device_id));
   
@@ -277,6 +277,7 @@ int init_process(char *conf_fname, conf_t *conf)
   //  {      
   //    if(ipcbuf_enable_sod(db, 0, 0) < 0)  // We start at the beginning
   //	{
+  //multilog(conf->log, LOG_ERR, "Can not write data before start, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
   //	  fprintf(stderr, "Can not write data before start, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
   //	  return EXIT_FAILURE;
   //	}
@@ -285,6 +286,7 @@ int init_process(char *conf_fname, conf_t *conf)
   //  {
   //    if(ipcbuf_disable_sod(db) < 0)
   //	{
+  //multilog(conf->log, LOG_ERR, "Can not write data before start, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
   //	  fprintf(stderr, "Can not write data before start, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
   //	  return EXIT_FAILURE;
   //	}
@@ -293,6 +295,7 @@ int init_process(char *conf_fname, conf_t *conf)
   /* Register header */
   if(register_header(conf))
     {
+      multilog(conf->log, LOG_ERR, "header register failed, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       fprintf(stderr, "header register failed, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
@@ -499,6 +502,7 @@ int dat_offs_scl(conf_t conf)
   conf.hdu_in->data_block->curbuf = ipcio_open_block_read(conf.hdu_in->data_block, &curbufsz, &block_id);
   if(conf.hdu_in->data_block->curbuf == NULL)
     {
+      multilog (conf.log, LOG_ERR, "Can not get buffer block from input ring buffer, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       fprintf(stderr, "Can not get buffer block from input ring buffer, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
@@ -573,6 +577,7 @@ int dat_offs_scl(conf_t conf)
   fp = fopen(fname, "w");
   if(fp == NULL)
     {
+      multilog (conf.log, LOG_ERR, "Can not open scale file, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       fprintf(stderr, "Can not open scale file, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
@@ -688,6 +693,7 @@ int register_header(conf_t *conf)
 	  return EXIT_FAILURE;
 	}
       fprintf(stdout, "Setup UTC_START at process stage:\t%s\n", conf->utc_start);
+      multilog(conf->log, LOG_INFO, "UTC_START:\t%s\n", conf->utc_start);
       
       /* Pass picoseconds from hdrin to hdrout */
       if (ascii_header_get(conf->hdrbuf_in, "PICOSECONDS", "%"PRIu64, &(conf->picoseconds)) < 0)  
@@ -704,6 +710,7 @@ int register_header(conf_t *conf)
 	  return EXIT_FAILURE;
 	}
       fprintf(stdout, "Setup PICOSECONDS at process stage:\t%"PRIu64"\n", conf->picoseconds);
+      multilog(conf->log, LOG_INFO, "PICOSECONDS:\t%"PRIu64"\n", conf->picoseconds);
       
       /* Pass frequency from hdrin to hdrout */
       if (ascii_header_get(conf->hdrbuf_in, "FREQ", "%lf", &freq) < 0)   // RA and DEC also need to pass from hdrin to hdrout
