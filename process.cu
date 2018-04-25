@@ -9,9 +9,12 @@
 #include <inttypes.h>
 #include <math.h>
 
+#include "multilog.h"
 #include "process.cuh"
 #include "cudautil.cuh"
 #include "kernel.cuh"
+
+extern multilog_t *runtime_log;
 
 int init_process(conf_t *conf)
 {
@@ -204,11 +207,11 @@ int init_process(conf_t *conf)
   conf->blocksize_transpose_float.z = 1;
   
   /* attach to input ring buffer */
-  conf->hdu_in = dada_hdu_create(conf->log);
+  conf->hdu_in = dada_hdu_create(runtime_log);
   dada_hdu_set_key(conf->hdu_in, conf->key_in);
   if(dada_hdu_connect(conf->hdu_in) < 0)
     {
-      multilog(conf->log, LOG_ERR, "could not connect to hdu\n");
+      multilog(runtime_log, LOG_ERR, "could not connect to hdu\n");
       fprintf(stderr, "Can not connect to hdu, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;    
     }  
@@ -216,7 +219,7 @@ int init_process(conf_t *conf)
   conf->rbufin_size = ipcbuf_get_bufsz(db);  
   if(conf->rbufin_size % conf->bufin_size != 0)  
     {
-      multilog(conf->log, LOG_ERR, "data buffer size mismatch\n");
+      multilog(runtime_log, LOG_ERR, "data buffer size mismatch\n");
       fprintf(stderr, "Buffer size mismatch, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;    
     }
@@ -227,7 +230,7 @@ int init_process(conf_t *conf)
   conf->hdrsz = ipcbuf_get_bufsz(conf->hdu_in->header_block);  
   if(conf->hdrsz != DADA_HDR_SIZE)    // This number should match
     {
-      multilog(conf->log, LOG_ERR, "data buffer size mismatch\n");
+      multilog(runtime_log, LOG_ERR, "data buffer size mismatch\n");
       fprintf(stderr, "Buffer size mismatch, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;    
     }
@@ -235,17 +238,17 @@ int init_process(conf_t *conf)
   /* make ourselves the read client */
   if(dada_hdu_lock_read(conf->hdu_in) < 0)
     {
-      multilog(conf->log, LOG_ERR, "open_hdu: could not lock write\n");
+      multilog(runtime_log, LOG_ERR, "open_hdu: could not lock write\n");
       fprintf(stderr, "Error locking HDU, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
 
   /* Prepare output ring buffer */  
-  conf->hdu_out = dada_hdu_create(conf->log);
+  conf->hdu_out = dada_hdu_create(runtime_log);
   dada_hdu_set_key(conf->hdu_out, conf->key_out);
   if(dada_hdu_connect(conf->hdu_out) < 0)
     {
-      multilog(conf->log, LOG_ERR, "could not connect to hdu\n");
+      multilog(runtime_log, LOG_ERR, "could not connect to hdu\n");
       fprintf(stderr, "Can not connect to hdu, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;    
     }
@@ -253,7 +256,7 @@ int init_process(conf_t *conf)
   conf->rbufout_size = ipcbuf_get_bufsz(db);
   if(conf->rbufout_size % conf->bufout_size != 0)  
     {
-      multilog(conf->log, LOG_ERR, "data buffer size mismatch\n");
+      multilog(runtime_log, LOG_ERR, "data buffer size mismatch\n");
       fprintf(stderr, "Buffer size mismatch, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;    
     }
@@ -261,14 +264,14 @@ int init_process(conf_t *conf)
   conf->hdrsz = ipcbuf_get_bufsz(conf->hdu_out->header_block);  
   if(conf->hdrsz != DADA_HDR_SIZE)    // This number should match
     {
-      multilog(conf->log, LOG_ERR, "data buffer size mismatch\n");
+      multilog(runtime_log, LOG_ERR, "data buffer size mismatch\n");
       fprintf(stderr, "Buffer size mismatch, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;    
     }  
   /* make ourselves the write client */
   if(dada_hdu_lock_write(conf->hdu_out) < 0)
     {
-      multilog(conf->log, LOG_ERR, "open_hdu: could not lock write\n");
+      multilog(runtime_log, LOG_ERR, "open_hdu: could not lock write\n");
       fprintf(stderr, "Error locking HDU, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
@@ -277,7 +280,7 @@ int init_process(conf_t *conf)
   //  {      
   //    if(ipcbuf_enable_sod(db, 0, 0) < 0)  // We start at the beginning
   //	{
-  //multilog(conf->log, LOG_ERR, "Can not write data before start, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+  //multilog(runtime_log, LOG_ERR, "Can not write data before start, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
   //	  fprintf(stderr, "Can not write data before start, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
   //	  return EXIT_FAILURE;
   //	}
@@ -286,7 +289,7 @@ int init_process(conf_t *conf)
   //  {
   //    if(ipcbuf_disable_sod(db) < 0)
   //	{
-  //multilog(conf->log, LOG_ERR, "Can not write data before start, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+  //multilog(runtime_log, LOG_ERR, "Can not write data before start, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
   //	  fprintf(stderr, "Can not write data before start, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
   //	  return EXIT_FAILURE;
   //	}
@@ -295,7 +298,7 @@ int init_process(conf_t *conf)
   /* Register header */
   if(register_header(conf))
     {
-      multilog(conf->log, LOG_ERR, "header register failed, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      multilog(runtime_log, LOG_ERR, "header register failed, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       fprintf(stderr, "header register failed, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
@@ -435,7 +438,7 @@ int do_process(conf_t conf)
       /* Close current buffer */
       if(ipcio_close_block_write(conf.hdu_out->data_block, conf.rbufout_size) < 0)
 	{
-	  multilog (conf.log, LOG_ERR, "close_buffer: ipcio_close_block_write failed\n");
+	  multilog (runtime_log, LOG_ERR, "close_buffer: ipcio_close_block_write failed\n");
 	  fprintf(stderr, "close_buffer: ipcio_close_block_write failed, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
 	  return EXIT_FAILURE;
 	}
@@ -458,7 +461,7 @@ int do_process(conf_t conf)
   
   if (ipcio_close_block_write(conf.hdu_out->data_block, conf.rbufout_size) < 0)
     {
-      multilog (conf.log, LOG_ERR, "close_buffer: ipcio_close_block_write failed\n");
+      multilog (runtime_log, LOG_ERR, "close_buffer: ipcio_close_block_write failed\n");
       fprintf(stderr, "close_buffer: ipcio_close_block_write failed, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
@@ -502,7 +505,7 @@ int dat_offs_scl(conf_t conf)
   conf.hdu_in->data_block->curbuf = ipcio_open_block_read(conf.hdu_in->data_block, &curbufsz, &block_id);
   if(conf.hdu_in->data_block->curbuf == NULL)
     {
-      multilog (conf.log, LOG_ERR, "Can not get buffer block from input ring buffer, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      multilog (runtime_log, LOG_ERR, "Can not get buffer block from input ring buffer, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       fprintf(stderr, "Can not get buffer block from input ring buffer, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
@@ -577,7 +580,7 @@ int dat_offs_scl(conf_t conf)
   fp = fopen(fname, "w");
   if(fp == NULL)
     {
-      multilog (conf.log, LOG_ERR, "Can not open scale file, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      multilog (runtime_log, LOG_ERR, "Can not open scale file, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       fprintf(stderr, "Can not open scale file, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
@@ -640,13 +643,13 @@ int register_header(conf_t *conf)
   conf->hdrbuf_in  = ipcbuf_get_next_read(conf->hdu_in->header_block, &hdrsz);  
   if (!conf->hdrbuf_in)
     {
-      multilog(conf->log, LOG_ERR, "get next header block error.\n");
+      multilog(runtime_log, LOG_ERR, "get next header block error.\n");
       fprintf(stderr, "Error getting header_buf, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
   if(hdrsz != DADA_HDR_SIZE)
     {
-      multilog(conf->log, LOG_ERR, "get next header block error.\n");
+      multilog(runtime_log, LOG_ERR, "get next header block error.\n");
       fprintf(stderr, "Header size mismatch, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
@@ -654,7 +657,7 @@ int register_header(conf_t *conf)
   conf->hdrbuf_out = ipcbuf_get_next_write(conf->hdu_out->header_block);
   if (!conf->hdrbuf_out)
     {
-      multilog(conf->log, LOG_ERR, "get next header block error.\n");
+      multilog(runtime_log, LOG_ERR, "get next header block error.\n");
       fprintf(stderr, "Error getting header_buf, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
@@ -664,7 +667,7 @@ int register_header(conf_t *conf)
       memcpy(conf->hdrbuf_out, conf->hdrbuf_in, DADA_HDR_SIZE);
       if (ascii_header_get(conf->hdrbuf_in, "UTC_START", "%s", conf->utc_start) < 0)  
 	{
-	  multilog(conf->log, LOG_ERR, "failed ascii_header_get UTC_START\n");
+	  multilog(runtime_log, LOG_ERR, "failed ascii_header_get UTC_START\n");
 	  fprintf(stderr, "Error getting UTC_START, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
 	  return EXIT_FAILURE;
 	}
@@ -673,7 +676,7 @@ int register_header(conf_t *conf)
     {
       if (fileread(conf->hfname, conf->hdrbuf_out, DADA_HDR_SIZE) < 0)
 	{
-	  multilog(conf->log, LOG_ERR, "cannot read header from %s\n", conf->hfname);
+	  multilog(runtime_log, LOG_ERR, "cannot read header from %s\n", conf->hfname);
 	  fprintf(stderr, "Error reading header file, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
 	  return EXIT_FAILURE;
 	}  
@@ -681,47 +684,47 @@ int register_header(conf_t *conf)
       /* Pass utc_start from hdrin to hdrout */
       if (ascii_header_get(conf->hdrbuf_in, "UTC_START", "%s", conf->utc_start) < 0)  
 	{
-	  multilog(conf->log, LOG_ERR, "failed ascii_header_get UTC_START\n");
+	  multilog(runtime_log, LOG_ERR, "failed ascii_header_get UTC_START\n");
 	  fprintf(stderr, "Error getting UTC_START, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
 	  return EXIT_FAILURE;
 	}
-      fprintf(stdout, "Get UTC_START at process stage:\t%s\n", conf->utc_start);
+      fprintf(stdout, "\nGet UTC_START at process stage:\t\t%s\n", conf->utc_start);
       if (ascii_header_set(conf->hdrbuf_out, "UTC_START", "%s", conf->utc_start) < 0)  
 	{
-	  multilog(conf->log, LOG_ERR, "failed ascii_header_get UTC_START\n");
+	  multilog(runtime_log, LOG_ERR, "failed ascii_header_get UTC_START\n");
 	  fprintf(stderr, "Error setting UTC_START, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
 	  return EXIT_FAILURE;
 	}
-      fprintf(stdout, "Setup UTC_START at process stage:\t%s\n", conf->utc_start);
-      multilog(conf->log, LOG_INFO, "UTC_START:\t%s\n", conf->utc_start);
+      fprintf(stdout, "Set UTC_START at process stage:\t\t%s\n", conf->utc_start);
+      multilog(runtime_log, LOG_INFO, "UTC_START:\t%s\n", conf->utc_start);
       
       /* Pass picoseconds from hdrin to hdrout */
       if (ascii_header_get(conf->hdrbuf_in, "PICOSECONDS", "%"PRIu64, &(conf->picoseconds)) < 0)  
 	{
-	  multilog(conf->log, LOG_ERR, "failed ascii_header_get PICOSECONDS\n");
+	  multilog(runtime_log, LOG_ERR, "failed ascii_header_get PICOSECONDS\n");
 	  fprintf(stderr, "Error getting PICOSECONDS, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
 	  return EXIT_FAILURE;
 	}
       fprintf(stdout, "Get PICOSECONDS at process stage:\t%"PRIu64"\n", conf->picoseconds);
       if (ascii_header_set(conf->hdrbuf_out, "PICOSECONDS", "%"PRIu64, conf->picoseconds) < 0)  
 	{
-	  multilog(conf->log, LOG_ERR, "failed ascii_header_get PICOSECONDS\n");
+	  multilog(runtime_log, LOG_ERR, "failed ascii_header_get PICOSECONDS\n");
 	  fprintf(stderr, "Error setting PICOSECONDS, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
 	  return EXIT_FAILURE;
 	}
-      fprintf(stdout, "Setup PICOSECONDS at process stage:\t%"PRIu64"\n", conf->picoseconds);
-      multilog(conf->log, LOG_INFO, "PICOSECONDS:\t%"PRIu64"\n", conf->picoseconds);
+      fprintf(stdout, "Set PICOSECONDS at process stage:\t%"PRIu64"\n\n", conf->picoseconds);
+      multilog(runtime_log, LOG_INFO, "PICOSECONDS:\t%"PRIu64"\n", conf->picoseconds);
       
       /* Pass frequency from hdrin to hdrout */
       if (ascii_header_get(conf->hdrbuf_in, "FREQ", "%lf", &freq) < 0)   // RA and DEC also need to pass from hdrin to hdrout
 	{
-	  multilog(conf->log, LOG_ERR, "failed ascii_header_get FREQ\n");
+	  multilog(runtime_log, LOG_ERR, "failed ascii_header_get FREQ\n");
 	  fprintf(stderr, "Error getting FREQ, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
 	  return EXIT_FAILURE;
 	}
       if (ascii_header_set(conf->hdrbuf_out, "FREQ", "%.1lf", freq) < 0)  
 	{
-	  multilog(conf->log, LOG_ERR, "failed ascii_header_get FREQ\n");
+	  multilog(runtime_log, LOG_ERR, "failed ascii_header_get FREQ\n");
 	  fprintf(stderr, "Error setting FREQ, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
 	  return EXIT_FAILURE;
 	}
@@ -729,7 +732,7 @@ int register_header(conf_t *conf)
   
   if(ipcbuf_mark_cleared (conf->hdu_in->header_block))  // We are the only one reader, so that we can clear it after read;
     {
-      multilog(conf->log, LOG_ERR, "Could not clear header block\n");
+      multilog(runtime_log, LOG_ERR, "Could not clear header block\n");
       fprintf(stderr, "Error header_clear, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
@@ -737,7 +740,7 @@ int register_header(conf_t *conf)
   /* donot set header parameters anymore - acqn. doesn't start */
   if (ipcbuf_mark_filled (conf->hdu_out->header_block, conf->hdrsz) < 0)
     {
-      multilog(conf->log, LOG_ERR, "Could not mark filled header block\n");
+      multilog(runtime_log, LOG_ERR, "Could not mark filled header block\n");
       fprintf(stderr, "Error header_fill, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }

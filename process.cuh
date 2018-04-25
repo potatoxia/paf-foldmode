@@ -10,7 +10,6 @@
 #include "dada_hdu.h"
 #include "dada_def.h"
 #include "ipcio.h"
-#include "multilog.h"
 #include "ascii_header.h"
 #include "daemon.h"
 #include "futils.h"
@@ -74,8 +73,6 @@ typedef struct conf_t
   
   key_t key_out, key_in;
   dada_hdu_t *hdu_out, *hdu_in;
-  multilog_t *log;                // DADA logging interface
-  FILE *fp_log;
   
   char *hdrbuf_in, *hdrbuf_out;
   int64_t *dbuf_in;
