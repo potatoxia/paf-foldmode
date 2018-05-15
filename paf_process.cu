@@ -8,16 +8,30 @@
 #include <unistd.h>
 #include <inttypes.h>
 
+#include "multilog.h"
 #include "paf_process.cuh"
 #include "process.cuh"
 #include "cudautil.cuh"
 
+multilog_t *runtime_log;
+
 int main(int argc, char *argv[])
 {
   int arg;
-  char conf_fname[MSTR_LEN];
   conf_t conf;
-
+  FILE *fp_log = NULL;
+  
+  /* Setup log interface */
+  fp_log = fopen("paf_process.log", "ab+");
+  if(fp_log == NULL)
+    {
+      fprintf(stderr, "Can not open log file paf_process.log\n");
+      return EXIT_FAILURE;
+    }
+  runtime_log = multilog_open("paf_process", 1);
+  multilog_add(runtime_log, fp_log);
+  multilog(runtime_log, LOG_INFO, "START PAF_PROCESS\n");
+  
   /* Initial part */  
   while((arg=getopt(argc,argv,"c:o:i:d:s:h:n:p:r:g:f:b:")) != -1)
     {
@@ -38,6 +52,7 @@ int main(int argc, char *argv[])
 	case 'o':	  
 	  if (sscanf (optarg, "%x", &conf.key_out) != 1)
 	    {
+	      multilog (runtime_log, LOG_ERR, "Could not parse key from %s, which happens at \"%s\", line [%d].\n", optarg, __FILE__, __LINE__);
 	      fprintf (stderr, "Could not parse key from %s, which happens at \"%s\", line [%d].\n", optarg, __FILE__, __LINE__);
 	      return EXIT_FAILURE;
 	    }
@@ -46,6 +61,7 @@ int main(int argc, char *argv[])
 	case 'i':	  
 	  if (sscanf (optarg, "%x", &conf.key_in) != 1)
 	    {
+	      multilog (runtime_log, LOG_ERR, "Could not parse key from %s, which happens at \"%s\", line [%d].\n", optarg, __FILE__, __LINE__);
 	      fprintf (stderr, "Could not parse key from %s, which happens at \"%s\", line [%d].\n", optarg, __FILE__, __LINE__);
 	      return EXIT_FAILURE;
 	    }
@@ -82,7 +98,7 @@ int main(int argc, char *argv[])
   double elapsed_time;
   clock_gettime(CLOCK_REALTIME, &start);
 #endif
-  init_process(conf_fname, &conf);
+  init_process(&conf);
 #ifdef DEBUG
       clock_gettime(CLOCK_REALTIME, &stop);
       elapsed_time = (stop.tv_sec - start.tv_sec) + (stop.tv_nsec - start.tv_nsec)/1000000000.0L;
@@ -114,7 +130,8 @@ int main(int argc, char *argv[])
 #endif
   if(do_process(conf))
     {
-      fprintf(stderr, "Can not finish the process, which happens at \"%s\", line [%d].\n", conf_fname, __FILE__, __LINE__);
+      multilog (runtime_log, LOG_ERR, "Can not finish the process, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      fprintf(stderr, "Can not finish the process, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
   #ifdef DEBUG
@@ -125,5 +142,10 @@ int main(int argc, char *argv[])
 
   destroy_process(conf);
 
+  /* Destory log interface */
+  multilog(runtime_log, LOG_INFO, "FINISH PAF_PROCESS\n\n");
+  multilog_close(runtime_log);
+  fclose(fp_log);
+  
   return EXIT_SUCCESS;
 }

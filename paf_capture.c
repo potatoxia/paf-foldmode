@@ -11,6 +11,7 @@
 #include "dada_def.h"
 
 extern int quit;
+multilog_t *runtime_log;
 
 /*
   1. Finish the ring buffer part, should be working now;
@@ -32,7 +33,18 @@ int main(int argc, char **argv)
   double length = 36.000;             // Default observation length in seconds;
   char hostname[HN_LEN + 1];          // The name of host computer;
   conf_t conf;
-  char conf_fname[MSTR_LEN];
+  FILE *fp_log = NULL;
+  
+  /* Setup log interface */
+  fp_log = fopen("paf_capture.log", "ab+"); // File to record log information
+  if(fp_log == NULL)
+    {
+      fprintf(stderr, "Can not open log file paf_capture.log\n");
+      return EXIT_FAILURE;
+    }
+  runtime_log = multilog_open("paf_capture", 1);
+  multilog_add(runtime_log, fp_log);
+  multilog(runtime_log, LOG_INFO, "START PAF_CAPTURE\n");
   
   while((arg=getopt(argc,argv,"k:l:n:c:h:f:e:s:r:d:")) != -1)
     {
@@ -41,13 +53,14 @@ int main(int argc, char **argv)
 	case 'k':	  	  
 	  if (sscanf (optarg, "%x", &conf.key) != 1)
 	    {
-	      fprintf (stderr, "Could not parse key from %s, which happens at \"%s\", line [%d].\n", optarg, __FILE__, __LINE__);
+	      multilog(runtime_log, LOG_INFO, "Could not parse key from %s, which happens at \"%s\", line [%d].\n", optarg, __FILE__, __LINE__);
+	      //fprintf (stderr, "Could not parse key from %s, which happens at \"%s\", line [%d].\n", optarg, __FILE__, __LINE__);
 	      return EXIT_FAILURE;
 	    }
 	  break;
 
 	case 'l':
-	  sscanf(optarg, "%lf", &length);
+	  sscanf(optarg, "%lf", &conf.length);
 	  break;
 	  
 	case 'n':
@@ -58,7 +71,7 @@ int main(int argc, char **argv)
 	  sscanf(optarg, "%s", conf.hfname);
 	  break;
 
-	case 'e':	  	  
+	case 'e':
 	  sscanf(optarg, "%s", conf.efname);
 	  break;
 	  
@@ -100,14 +113,16 @@ int main(int argc, char **argv)
   int ports[MPORT_NIC];
   for (i = 0; i < NPORT_NIC; i++)
     ports[i] = PORT_BASE + i;
-  if(init_capture(&conf, ip, ports, length, conf_fname) == EXIT_FAILURE)
+  if(init_capture(&conf, ip, ports) == EXIT_FAILURE)
     {
-      fprintf (stderr, "Can not initialise the capture, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      multilog(runtime_log, LOG_INFO, "Can not initialise the capture, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      //fprintf (stderr, "Can not initialise the capture, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;      
     }
   if(threads(&conf) == EXIT_FAILURE)
-    {      
-      fprintf(stderr, "Can not capture data, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+    {
+      multilog(runtime_log, LOG_INFO, "Can not capture data, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      //fprintf(stderr, "Can not capture data, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
 
@@ -117,7 +132,8 @@ int main(int argc, char **argv)
   /* Cleanup */
   if(destroy_capture(conf) == EXIT_FAILURE)
     {
-      fprintf(stderr, "Can not destroy buffers, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      multilog(runtime_log, LOG_INFO, "Can not destroy buffers, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      //fprintf(stderr, "Can not destroy buffers, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
 
@@ -131,6 +147,11 @@ int main(int argc, char **argv)
   else
     fprintf(stdout, "Finish successful!\n\n");
 #endif
-
+  
+  /* Destory log interface */
+  multilog(runtime_log, LOG_INFO, "FINISH PAF_CAPTURE\n\n");
+  multilog_close(runtime_log);
+  fclose(fp_log);
+  
   return EXIT_SUCCESS;
 }

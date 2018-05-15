@@ -5,7 +5,7 @@
 # I made assumption here:
 # 1. scale calculation uses only one buffer block, no matter how big the block is;
 # 2. numa node index is 0 and 1, nic ip end with 1 and 2, gpu index is 0 and 1;
-# ./fold.py -d 0 -n 1 -c fold.conf -l 3600
+# ./fold.py -d 0 -n 1 -c fold.conf -l 3600 -f 2
 
 import os, time, threading, ConfigParser, argparse, socket, json, struct, sys
 
@@ -50,13 +50,16 @@ parser.add_argument('-n', '--numa', type=int, nargs='+',
                     help='On which numa node we do the work, 0 or 1')
 parser.add_argument('-l', '--length', type=float, nargs='+',
                 help='Length of data receiving')
+parser.add_argument('-f', '--first_final', type=int, nargs='+',
+                    help='First run or final run, 0 for first run and create shared memory, 1 for last run and destroy shared memory, the rest does nothing')
 
-args   = parser.parse_args()
-debug  = args.debug[0]
-cfname = args.cfname[0]
-numa   = args.numa[0]
-length = args.length[0]
-nic    = numa + 1
+args         = parser.parse_args()
+debug        = args.debug[0]
+cfname       = args.cfname[0]
+numa         = args.numa[0]
+length       = args.length[0]
+nic          = numa + 1
+first_final  = args.first_final[0]
 
 # Play with configuration file
 Config = ConfigParser.ConfigParser()
@@ -122,65 +125,77 @@ if (capture_ndf % (process_nstream * process_ndf)):
 else:
     nrun_blk = capture_ndf / (process_nstream * process_ndf)
 
+def diskdb():
+    os.system('taskset -c {:d} ./paf_diskdb -k {:s} -s {:s} -d {:s} -n {:s} -h {:s} -g {:d}'.format(diskdb_cpu, capture_key, diskdb_sod, diskdb_dir, diskdb_dfname, diskdb_hfname, numa))
+
 def capture():
     time.sleep(sleep_time)
     os.system("./paf_capture -k {:s} -l {:f} -n {:d} -h {:s} -f {:f} -e {:s} -s {:s} -r {:d} -d 0".format(capture_key, length, nic, capture_hfname, freq, capture_efname, capture_sod, capture_ndf))
 
 def process():
-    time.sleep(sleep_time/2)
+    time.sleep(0.5 * sleep_time)
     if debug:
         os.system('taskset -c {:d} ./paf_process -i {:s} -o {:s} -c {:d} -d {:d} -s {:s} -h {:s} -n {:d} -p {:d} -f {:s} -b {:d} -g 1'.format(process_cpu, capture_key, process_key, capture_ndf, numa, process_sod, process_hfname, process_nstream, process_ndf, process_dir, nrun_blk))
-        #os.system('taskset -c {:d} nvprof ./paf_process -i {:s} -o {:s} -c {:d} -d {:d} -s {:s} -h {:s} -n {:d} -p {:d} -f {:s} -b {:d} -g 1'.format(process_cpu, capture_key, process_key, capture_ndf, numa, process_sod, process_hfname, process_nstream, process_ndf, process_dir, nrun_blk))
-        #os.system('taskset -c {:d} cuda-memcheck ./paf_process -i {:s} -o {:s} -c {:d} -d {:d} -s {:s} -h {:s} -n {:d} -p {:d} -f {:s} -b {:d} -g 1'.format(process_cpu, capture_key, process_key, capture_ndf, numa, process_sod, process_hfname, process_nstream, process_ndf, process_dir, nrun_blk))
     else:
         os.system('taskset -c {:d} ./paf_process -i {:s} -o {:s} -c {:d} -d {:d} -s {:s} -h {:s} -n {:d} -p {:d} -f {:s} -b {:d} -g 0'.format(process_cpu, capture_key, process_key, capture_ndf, numa, process_sod, process_hfname, process_nstream, process_ndf, process_dir, nrun_blk))
-        #os.system('taskset -c {:d} nvprof ./paf_process -i {:s} -o {:s} -c {:d} -d {:d} -s {:s} -h {:s} -n {:d} -p {:d} -f {:s} -b {:d} -g 0'.format(process_cpu, capture_key, process_key, capture_ndf, numa, process_sod, process_hfname, process_nstream, process_ndf, process_dir, nrun_blk))
-        #os.system('taskset -c {:d} cuda-memcheck ./paf_process -i {:s} -o {:s} -c {:d} -d {:d} -s {:s} -h {:s} -n {:d} -p {:d} -f {:s} -b {:d} -g 0'.format(process_cpu, capture_key, process_key, capture_ndf, numa, process_sod, process_hfname, process_nstream, process_ndf, process_dir, nrun_blk))
         
-def fold():
-    #print 'dspsr -cpu {:d} -E {:s} {:s} -cuda {:d},{:d},{:d},{:d} -L {:d} -A'.format(fold_cpu, pfname, process_kfname, numa, numa, numa, numa, subint)
-    #os.system('nvprof dspsr -cpu {:d} -E {:s} {:s} -cuda {:d},{:d},{:d},{:d} -L {:d} -A'.format(fold_cpu, pfname, process_kfname, numa, numa, numa, numa, subint))
-    os.system('dspsr -cpu {:d} -E {:s} {:s} -cuda {:d},{:d},{:d},{:d} -L {:d} -A'.format(fold_cpu, pfname, process_kfname, numa, numa, numa, numa, subint))
-
-def diskdb():
-    os.system('taskset -c {:d} ./paf_diskdb -k {:s} -s {:s} -d {:s} -n {:s} -h {:s} -g {:d}'.format(diskdb_cpu, capture_key, diskdb_sod, diskdb_dir, diskdb_dfname, diskdb_hfname, numa))
-    
-def main():
+def fold_with_second_ringbuf():
     # Create key files
+    # For current version, we only need to create share memory at the first time
+    # and destroy share memory at the last time
+    # this will save prepare time for the pipeline as well
     process_key_file = open(process_kfname, "w")
     process_key_file.writelines("DADA INFO:\n")
     process_key_file.writelines("key {:s}\n".format(process_key))
     process_key_file.close()
 
+    if(first_final == 0):
+        os.system("dada_db -l -p -k {:s} -b {:d} -n {:s} -r {:s}".format(process_key, process_rbufsz, process_nbuf, process_nreader))
+    os.system('dspsr -cpu {:d} -E {:s} {:s} -cuda {:d},{:d} -L {:d} -A'.format(fold_cpu, pfname, process_kfname, numa, numa, subint))
+    if(first_final == 1):
+        os.system("dada_db -k {:s} -d".format(process_key))
+    
+def capture_process_with_first_ringbuf():
+    # Create key files
+    # For current version, we only need to create share memory at the first time
+    # and destroy share memory at the last time
+    # this will save prepare time for the pipeline as well
     capture_key_file = open(capture_kfname, "w")
     capture_key_file.writelines("DADA INFO:\n")
     capture_key_file.writelines("key {:s}\n".format(capture_key))
     capture_key_file.close()
 
-    os.system("dada_db -l -p -k {:s} -b {:d} -n {:s} -r {:s}".format(capture_key, capture_rbufsz, capture_nbuf, capture_nreader))
-    os.system("dada_db -l -p -k {:s} -b {:d} -n {:s} -r {:s}".format(process_key, process_rbufsz, process_nbuf, process_nreader))
+    if(first_final == 0):
+        os.system("dada_db -l -p -k {:s} -b {:d} -n {:s} -r {:s}".format(capture_key, capture_rbufsz, capture_nbuf, capture_nreader))
     
-    t_capture = threading.Thread(target = capture)
+    # Start threads
     t_process = threading.Thread(target = process)
-    t_fold    = threading.Thread(target = fold)
-    t_diskdb  = threading.Thread(target = diskdb)
-
+    t_process.start()
     if debug:
+        t_diskdb  = threading.Thread(target = diskdb)
         t_diskdb.start()
     else:
+        t_capture = threading.Thread(target = capture)
         t_capture.start()
-    t_process.start()
-    t_fold.start()
 
+    # Join threads
+    t_process.join()
     if debug:
         t_diskdb.join()
     else:
         t_capture.join()
-    t_process.join()
-    t_fold.join()
+    if(first_final == 1):
+        os.system("dada_db -k {:s} -d".format(capture_key))
+        
+def main():
+    t_first = threading.Thread(target = capture_process_with_first_ringbuf)
+    t_second = threading.Thread(target = fold_with_second_ringbuf)
     
-    os.system("dada_db -k {:s} -d".format(capture_key))
-    os.system("dada_db -k {:s} -d".format(process_key))    
+    t_first.start()
+    t_second.start()
     
+    t_first.join()
+    t_second.join()
+
 if __name__ == "__main__":
     main()

@@ -8,7 +8,6 @@
 #include "dada_hdu.h"
 #include "dada_def.h"
 #include "ipcio.h"
-#include "multilog.h"
 #include "ascii_header.h"
 #include "daemon.h"
 #include "futils.h"
@@ -64,7 +63,6 @@ typedef struct conf_t
   int sod;
   
   key_t key;
-  multilog_t *log;                // DADA logging interface
   dada_hdu_t *hdu;
   
   size_t rbuf_ndf, rbuf_nblk;
@@ -75,6 +73,8 @@ typedef struct conf_t
   double freq;
   char hfname[MSTR_LEN];
   char efname[MSTR_LEN];
+
+  double length;
   
   struct sock_t sock[MPORT_NIC];
 }conf_t;
@@ -86,7 +86,7 @@ int acquire_hdr_end(sock_t *sock, double length, int active_ports);
 int init_sockets(sock_t *sock, char *ip, int *ports);
 //int init_rbuf(uint64_t rbufsz, int nbufs, key_t key);
 
-int check_connection(sock_t *sock, int *active_ports, int *active_chunks);
+  int check_connection(sock_t *sock, int *active_ports, int *active_chunks);
 int sock_sort(sock_t *sock);
 int align_df(sock_t *sock, int active_ports);
 
@@ -97,7 +97,7 @@ void *capture_thread(void *conf);
 int statistics(conf_t conf);
 
 int init_rbuf(conf_t *conf);
-int init_capture(conf_t *conf, char *ip, int *ports, double length, char *conf_fname);
+int init_capture(conf_t *conf, char *ip, int *ports);
 int register_header(conf_t *conf);
 int acquire_start_time(hdr_t hdr_start, char efname[MSTR_LEN], char utc_start[MSTR_LEN], uint64_t *picoseconds);
 #endif
