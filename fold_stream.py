@@ -82,7 +82,7 @@ capture_ndf 	= int(ConfigSectionMap("CaptureConf")['ndf'])
 capture_nbuf    = ConfigSectionMap("CaptureConf")['nblk']
 capture_key     = ConfigSectionMap("CaptureConf")['key']
 capture_key     = format(int("0x{:s}".format(capture_key), 0) + 2 * nic, 'x')
-capture_kfname  = "{:s}_nic{:d}.key".format(ConfigSectionMap("CaptureConf")['kfname_prefix'], nic)
+capture_kfname  = "{:s}/{:s}_nic{:d}.key".format(directory, ConfigSectionMap("CaptureConf")['kfname_prefix'], nic)
 capture_efname  = ConfigSectionMap("CaptureConf")['efname']
 capture_hfname  = ConfigSectionMap("CaptureConf")['hfname']
 capture_nreader = ConfigSectionMap("CaptureConf")['nreader']
@@ -90,8 +90,8 @@ capture_sod     = ConfigSectionMap("CaptureConf")['sod']
 capture_rbufsz  = capture_ndf *  nchk_nic * 7168
 
 # Process configuration
-process_key        =  ConfigSectionMap("ProcessConf")['key']
-process_kfname     =  "{:s}_nic{:d}.key".format(ConfigSectionMap("ProcessConf")['kfname_prefix'], nic)
+process_key        = ConfigSectionMap("ProcessConf")['key']
+process_kfname     = "{:s}/{:s}_nic{:d}.key".format(directory, ConfigSectionMap("ProcessConf")['kfname_prefix'], nic)
 process_key        = format(int("0x{:s}".format(process_key), 0) + 2 * nic, 'x')
 process_sod        = ConfigSectionMap("ProcessConf")['sod']
 process_nreader    = ConfigSectionMap("ProcessConf")['nreader']
