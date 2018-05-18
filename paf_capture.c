@@ -84,7 +84,7 @@ int main(int argc, char **argv)
 	  break;
 	  
 	case 'r':
-	  sscanf(optarg, "%d", &conf.rbuf_ndf);
+	  sscanf(optarg, "%zu", &conf.rbuf_ndf);
 	  break;
 	  
 	case 'd':
