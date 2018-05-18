@@ -87,7 +87,7 @@ int main(int argc, char **argv)
 	}
     }
   /* Setup log interface */
-  sscanf(log_fname, "%s/paf_capture.log", conf.dir);
+  sprintf(log_fname, "%s/paf_capture.log", conf.dir);
   fp_log = fopen(log_fname, "ab+"); // File to record log information
   if(fp_log == NULL)
     {

@@ -50,9 +50,9 @@ parser.add_argument('-l', '--length', type=float, nargs='+',
                 help='Length of data receiving')
 parser.add_argument('-f', '--first_final', type=int, nargs='+',
                     help='First run or final run, 0 for first run and create shared memory, 1 for last run and destroy shared memory, the rest does nothing')
-parser.add_argument('-d', '--directory', type=int, nargs='+',
+parser.add_argument('-d', '--directory', type=str, nargs='+',
                     help='In which directory we record the data')
-parser.add_argument('-p', '--psrname', type=int, nargs='+',
+parser.add_argument('-p', '--psrname', type=str, nargs='+',
                     help='The name of pulsar')
 
 args         = parser.parse_args()
@@ -110,7 +110,6 @@ process_cpu        = ncpu_numa * numa + capture_ncpu
 
 # Fold configuration
 fold_cpu = ncpu_numa * numa + capture_ncpu + 1
-pfname   = ConfigSectionMap("FoldConf")['pfname']
 subint   = int(ConfigSectionMap("FoldConf")['subint'])
 
 # Check the buffer block can be covered with multiple run of multiple streams
@@ -140,7 +139,7 @@ def fold_with_second_ringbuf():
 
     if(first_final == 0):
         os.system("dada_db -l -p -k {:s} -b {:d} -n {:s} -r {:s}".format(process_key, process_rbufsz, process_nbuf, process_nreader))
-    os.system('dspsr -cpu {:d} -E {:s} {:s} -cuda {:d},{:d} -L {:d} -A'.format(fold_cpu, pfname, process_kfname, numa, numa, subint))
+    os.system('dspsr -cpu {:d} -N {:s} {:s} -cuda {:d},{:d} -L {:d} -A'.format(fold_cpu, psrname, process_kfname, numa, numa, subint))
     if(first_final == 1):
         os.system("dada_db -k {:s} -d".format(process_key))
     
@@ -179,5 +178,6 @@ def main():
     t_first.join()
     t_second.join()
 
+    os.system("mv *.ar {:s}".format(directory))
 if __name__ == "__main__":
     main()
