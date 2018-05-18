@@ -20,17 +20,7 @@ int main(int argc, char *argv[])
   int arg;
   conf_t conf;
   FILE *fp_log = NULL;
-  
-  /* Setup log interface */
-  fp_log = fopen("paf_process.log", "ab+");
-  if(fp_log == NULL)
-    {
-      fprintf(stderr, "Can not open log file paf_process.log\n");
-      return EXIT_FAILURE;
-    }
-  runtime_log = multilog_open("paf_process", 1);
-  multilog_add(runtime_log, fp_log);
-  multilog(runtime_log, LOG_INFO, "START PAF_PROCESS\n");
+  char log_fname[MSTR_LEN];
   
   /* Initial part */  
   while((arg=getopt(argc,argv,"c:o:i:d:s:h:n:p:r:g:f:b:")) != -1)
@@ -52,7 +42,7 @@ int main(int argc, char *argv[])
 	case 'o':	  
 	  if (sscanf (optarg, "%x", &conf.key_out) != 1)
 	    {
-	      multilog (runtime_log, LOG_ERR, "Could not parse key from %s, which happens at \"%s\", line [%d].\n", optarg, __FILE__, __LINE__);
+	      //multilog (runtime_log, LOG_ERR, "Could not parse key from %s, which happens at \"%s\", line [%d].\n", optarg, __FILE__, __LINE__);
 	      fprintf (stderr, "Could not parse key from %s, which happens at \"%s\", line [%d].\n", optarg, __FILE__, __LINE__);
 	      return EXIT_FAILURE;
 	    }
@@ -61,7 +51,7 @@ int main(int argc, char *argv[])
 	case 'i':	  
 	  if (sscanf (optarg, "%x", &conf.key_in) != 1)
 	    {
-	      multilog (runtime_log, LOG_ERR, "Could not parse key from %s, which happens at \"%s\", line [%d].\n", optarg, __FILE__, __LINE__);
+	      //multilog (runtime_log, LOG_ERR, "Could not parse key from %s, which happens at \"%s\", line [%d].\n", optarg, __FILE__, __LINE__);
 	      fprintf (stderr, "Could not parse key from %s, which happens at \"%s\", line [%d].\n", optarg, __FILE__, __LINE__);
 	      return EXIT_FAILURE;
 	    }
@@ -92,6 +82,18 @@ int main(int argc, char *argv[])
 	  break;	  
 	}
     }
+
+  /* Setup log interface */
+  sprintf(log_fname, "%s/paf_process.log", conf.dir);
+  fp_log = fopen(log_fname, "ab+");
+  if(fp_log == NULL)
+    {
+      fprintf(stderr, "Can not open log file %s\n", log_fname);
+      return EXIT_FAILURE;
+    }
+  runtime_log = multilog_open("paf_process", 1);
+  multilog_add(runtime_log, fp_log);
+  multilog(runtime_log, LOG_INFO, "START PAF_PROCESS\n");
   
 #ifdef DEBUG
   struct timespec start, stop;

@@ -34,31 +34,25 @@ int main(int argc, char **argv)
   char hostname[HN_LEN + 1];          // The name of host computer;
   conf_t conf;
   FILE *fp_log = NULL;
+  char log_fname[MSTR_LEN];
   
-  /* Setup log interface */
-  fp_log = fopen("paf_capture.log", "ab+"); // File to record log information
-  if(fp_log == NULL)
-    {
-      fprintf(stderr, "Can not open log file paf_capture.log\n");
-      return EXIT_FAILURE;
-    }
-  runtime_log = multilog_open("paf_capture", 1);
-  multilog_add(runtime_log, fp_log);
-  multilog(runtime_log, LOG_INFO, "START PAF_CAPTURE\n");
-  
-  while((arg=getopt(argc,argv,"k:l:n:c:h:f:e:s:r:d:")) != -1)
+  while((arg=getopt(argc,argv,"k:l:n:c:h:f:e:s:r:d:o:")) != -1)
     {
       switch(arg)
 	{
 	case 'k':	  	  
 	  if (sscanf (optarg, "%x", &conf.key) != 1)
 	    {
-	      multilog(runtime_log, LOG_INFO, "Could not parse key from %s, which happens at \"%s\", line [%d].\n", optarg, __FILE__, __LINE__);
-	      //fprintf (stderr, "Could not parse key from %s, which happens at \"%s\", line [%d].\n", optarg, __FILE__, __LINE__);
+	      //multilog(runtime_log, LOG_INFO, "Could not parse key from %s, which happens at \"%s\", line [%d].\n", optarg, __FILE__, __LINE__);
+	      fprintf (stderr, "Could not parse key from %s, which happens at \"%s\", line [%d].\n", optarg, __FILE__, __LINE__);
 	      return EXIT_FAILURE;
 	    }
 	  break;
 
+	case 'o':
+	  sscanf(optarg, "%s", conf.dir);
+	  break;
+	  
 	case 'l':
 	  sscanf(optarg, "%lf", &conf.length);
 	  break;
@@ -92,6 +86,17 @@ int main(int argc, char **argv)
 	  break;
 	}
     }
+  /* Setup log interface */
+  sscanf(log_fname, "%s/paf_capture.log", conf.dir);
+  fp_log = fopen(log_fname, "ab+"); // File to record log information
+  if(fp_log == NULL)
+    {
+      fprintf(stderr, "Can not open log file %s\n", log_fname);
+      return EXIT_FAILURE;
+    }
+  runtime_log = multilog_open("paf_capture", 1);
+  multilog_add(runtime_log, fp_log);
+  multilog(runtime_log, LOG_INFO, "START PAF_CAPTURE\n");
 
   hostname[HN_LEN] = '0';
   gethostname(hostname, HN_LEN + 1);

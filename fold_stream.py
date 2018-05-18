@@ -42,8 +42,6 @@ freq = 1340.5  # it should be the value from main startup GUI of TOS plus 0.5
 
 # Read in command line arguments
 parser = argparse.ArgumentParser(description='Fold data from BMF stream')
-parser.add_argument('-q', '--quiet', type=int, nargs='+',
-                    help='0 print out detail runtime information, 1 does not print out detail runtime information')
 parser.add_argument('-c', '--cfname', type=str, nargs='+',
                     help='The name of configuration file')
 parser.add_argument('-n', '--numa', type=int, nargs='+',
@@ -58,12 +56,13 @@ parser.add_argument('-p', '--psrname', type=int, nargs='+',
                     help='The name of pulsar')
 
 args         = parser.parse_args()
-debug        = args.debug[0]
 cfname       = args.cfname[0]
 numa         = args.numa[0]
 length       = args.length[0]
 nic          = numa + 1
 first_final  = args.first_final[0]
+directory    = args.directory[0]
+psrname      = args.psrname[0]
 
 # Play with configuration file
 Config = ConfigParser.ConfigParser()
@@ -108,19 +107,11 @@ process_rbufsz     = int(0.5 * capture_rbufsz * process_osampratei / process_nch
 
 process_hfname     = ConfigSectionMap("ProcessConf")['hfname']
 process_cpu        = ncpu_numa * numa + capture_ncpu
-process_dir        = ConfigSectionMap("ProcessConf")['dir']
 
 # Fold configuration
 fold_cpu = ncpu_numa * numa + capture_ncpu + 1
 pfname   = ConfigSectionMap("FoldConf")['pfname']
 subint   = int(ConfigSectionMap("FoldConf")['subint'])
-
-# Diskdb configuration
-diskdb_cpu     = ncpu_numa * numa + capture_ncpu + 2
-diskdb_sod     = ConfigSectionMap("DiskdbConf")['sod']
-diskdb_hfname  = ConfigSectionMap("DiskdbConf")['hfname']
-diskdb_dir     = ConfigSectionMap("DiskdbConf")['dir']
-diskdb_dfname  = ConfigSectionMap("DiskdbConf")['dfname']
 
 # Check the buffer block can be covered with multiple run of multiple streams
 if (capture_ndf % (process_nstream * process_ndf)):
@@ -129,19 +120,13 @@ if (capture_ndf % (process_nstream * process_ndf)):
 else:
     nrun_blk = capture_ndf / (process_nstream * process_ndf)
 
-def diskdb():
-    os.system('taskset -c {:d} ./paf_diskdb -k {:s} -s {:s} -d {:s} -n {:s} -h {:s} -g {:d}'.format(diskdb_cpu, capture_key, diskdb_sod, diskdb_dir, diskdb_dfname, diskdb_hfname, numa))
-
 def capture():
     time.sleep(sleep_time)
-    os.system("./paf_capture -k {:s} -l {:f} -n {:d} -h {:s} -f {:f} -e {:s} -s {:s} -r {:d} -d 0".format(capture_key, length, nic, capture_hfname, freq, capture_efname, capture_sod, capture_ndf))
+    os.system("./paf_capture -k {:s} -l {:f} -n {:d} -h {:s} -f {:f} -e {:s} -s {:s} -r {:d} -o {:s} -d 0".format(capture_key, length, nic, capture_hfname, freq, capture_efname, capture_sod, capture_ndf, directory))
 
 def process():
     time.sleep(0.5 * sleep_time)
-    if debug:
-        os.system('taskset -c {:d} ./paf_process -i {:s} -o {:s} -c {:d} -d {:d} -s {:s} -h {:s} -n {:d} -p {:d} -f {:s} -b {:d} -g 1'.format(process_cpu, capture_key, process_key, capture_ndf, numa, process_sod, process_hfname, process_nstream, process_ndf, process_dir, nrun_blk))
-    else:
-        os.system('taskset -c {:d} ./paf_process -i {:s} -o {:s} -c {:d} -d {:d} -s {:s} -h {:s} -n {:d} -p {:d} -f {:s} -b {:d} -g 0'.format(process_cpu, capture_key, process_key, capture_ndf, numa, process_sod, process_hfname, process_nstream, process_ndf, process_dir, nrun_blk))
+    os.system('taskset -c {:d} ./paf_process -i {:s} -o {:s} -c {:d} -d {:d} -s {:s} -h {:s} -n {:d} -p {:d} -f {:s} -b {:d} -g 0'.format(process_cpu, capture_key, process_key, capture_ndf, numa, process_sod, process_hfname, process_nstream, process_ndf, directory, nrun_blk))
         
 def fold_with_second_ringbuf():
     # Create key files
@@ -175,19 +160,12 @@ def capture_process_with_first_ringbuf():
     # Start threads
     t_process = threading.Thread(target = process)
     t_process.start()
-    if debug:
-        t_diskdb  = threading.Thread(target = diskdb)
-        t_diskdb.start()
-    else:
-        t_capture = threading.Thread(target = capture)
-        t_capture.start()
+    t_capture = threading.Thread(target = capture)
+    t_capture.start()
 
     # Join threads
     t_process.join()
-    if debug:
-        t_diskdb.join()
-    else:
-        t_capture.join()
+    t_capture.join()
     if(first_final == 1):
         os.system("dada_db -k {:s} -d".format(capture_key))
         
