@@ -106,7 +106,13 @@ int main(int argc, char *argv[])
       elapsed_time = (stop.tv_sec - start.tv_sec) + (stop.tv_nsec - start.tv_nsec)/1000000000.0L;
       fprintf(stdout, "elapsed time for processing prepare is %f s\n\n\n\n\n", elapsed_time);
 #endif
-      
+
+  /* Here to make sure that if we only expose one GPU into docker container, we can get the right index of it */ 
+  int deviceCount;
+  CudaSafeCall(cudaGetDeviceCount(&deviceCount));
+  if(deviceCount == 1)
+    conf.device_id = 0;
+    
   /* Check on-board gpus */
 //#ifdef DEBUG
 //  int deviceCount, device;
