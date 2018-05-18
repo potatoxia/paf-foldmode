@@ -66,7 +66,7 @@ psrname      = args.psrname[0]
 
 # Play with configuration file
 Config = ConfigParser.ConfigParser()
-Config.read(cfname)
+Config.read("{:s}/{:s}".format(directory, cfname))
 
 # Basic configuration
 nsamp_df     = int(ConfigSectionMap("BasicConf")['nsamp_df'])

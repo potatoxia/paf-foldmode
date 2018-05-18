@@ -34,7 +34,7 @@ int main(int argc, char **argv)
   char hostname[HN_LEN + 1];          // The name of host computer;
   conf_t conf;
   FILE *fp_log = NULL;
-  char log_fname[MSTR_LEN];
+  char log_fname[MSTR_LEN], hfname[MSTR_LEN], efname[MSTR_LEN];
   
   while((arg=getopt(argc,argv,"k:l:n:c:h:f:e:s:r:d:o:")) != -1)
     {
@@ -62,11 +62,11 @@ int main(int argc, char **argv)
 	  break;
 
 	case 'h':	  	  
-	  sscanf(optarg, "%s", conf.hfname);
+	  sscanf(optarg, "%s", hfname);
 	  break;
 
 	case 'e':
-	  sscanf(optarg, "%s", conf.efname);
+	  sscanf(optarg, "%s", efname);
 	  break;
 	  
 	case 'f':
@@ -86,6 +86,9 @@ int main(int argc, char **argv)
 	  break;
 	}
     }
+  sprintf(conf.efname, "%s/%s", conf.dir, efname);
+  sprintf(conf.hfname, "%s/%s", conf.dir, hfname);
+
   /* Setup log interface */
   sprintf(log_fname, "%s/paf_capture.log", conf.dir);
   fp_log = fopen(log_fname, "ab+"); // File to record log information

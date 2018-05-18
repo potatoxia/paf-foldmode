@@ -20,7 +20,7 @@ int main(int argc, char *argv[])
   int arg;
   conf_t conf;
   FILE *fp_log = NULL;
-  char log_fname[MSTR_LEN];
+  char log_fname[MSTR_LEN], hfname[MSTR_LEN];
   
   /* Initial part */  
   while((arg=getopt(argc,argv,"c:o:i:d:s:h:n:p:r:g:f:b:")) != -1)
@@ -28,7 +28,7 @@ int main(int argc, char *argv[])
       switch(arg)
 	{	  
 	case 'h':	  	  
-	  sscanf(optarg, "%s", conf.hfname);
+	  sscanf(optarg, "%s", hfname);
 	  break;
 
 	case 'c':
@@ -82,6 +82,7 @@ int main(int argc, char *argv[])
 	  break;	  
 	}
     }
+  sprintf(conf.hfname, "%s/%s", conf.dir, hfname);
 
   /* Setup log interface */
   sprintf(log_fname, "%s/paf_process.log", conf.dir);
