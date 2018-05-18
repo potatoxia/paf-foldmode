@@ -179,5 +179,6 @@ def main():
     t_second.join()
 
     os.system("mv *.ar {:s}".format(directory))
+
 if __name__ == "__main__":
     main()
