@@ -120,13 +120,13 @@ int main(int argc, char **argv)
     ports[i] = PORT_BASE + i;
   if(init_capture(&conf, ip, ports) == EXIT_FAILURE)
     {
-      multilog(runtime_log, LOG_INFO, "Can not initialise the capture, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      multilog(runtime_log, LOG_ERR, "Can not initialise the capture, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       //fprintf (stderr, "Can not initialise the capture, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;      
     }
   if(threads(&conf) == EXIT_FAILURE)
     {
-      multilog(runtime_log, LOG_INFO, "Can not capture data, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      multilog(runtime_log, LOG_ERR, "Can not capture data, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       //fprintf(stderr, "Can not capture data, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
@@ -137,7 +137,7 @@ int main(int argc, char **argv)
   /* Cleanup */
   if(destroy_capture(conf) == EXIT_FAILURE)
     {
-      multilog(runtime_log, LOG_INFO, "Can not destroy buffers, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+      multilog(runtime_log, LOG_ERR, "Can not destroy buffers, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       //fprintf(stderr, "Can not destroy buffers, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
       return EXIT_FAILURE;
     }
