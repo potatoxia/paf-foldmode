@@ -5,7 +5,6 @@
 # I made assumption here:
 # 1. scale calculation uses only one buffer block, no matter how big the block is;
 # 2. numa node index is 0 and 1, nic ip end with 1 and 2, gpu index is 0 and 1;
-# ./fold.py -d 0 -n 1 -c fold.conf -l 3600 -f 2
 
 import os, time, threading, ConfigParser, argparse, socket, json, struct, sys
 
@@ -50,8 +49,6 @@ parser.add_argument('-n', '--numa', type=int, nargs='+',
                     help='On which numa node we do the work, 0 or 1')
 parser.add_argument('-l', '--length', type=float, nargs='+',
                 help='Length of data receiving')
-parser.add_argument('-f', '--first_final', type=int, nargs='+',
-                    help='First run or final run, 0 for first run and create shared memory, 1 for last run and destroy shared memory, the rest does nothing')
 parser.add_argument('-d', '--directory', type=str, nargs='+',
                     help='In which directory we record the data and read configuration files and parameter files')
 parser.add_argument('-p', '--psrname', type=str, nargs='+',
@@ -64,7 +61,6 @@ cfname       = args.cfname[0]
 numa         = args.numa[0]
 length       = args.length[0]
 nic          = numa + 1
-first_final  = args.first_final[0]
 directory    = args.directory[0]
 psrname      = args.psrname[0]
 if(args.visiblegpu[0]==''):
@@ -143,52 +139,9 @@ def fold():
         os.system('dspsr -cpu {:d} -N {:s} {:s} -cuda {:d},{:d} -L {:d} -A'.format(fold_cpu, psrname, process_kfname, numa, numa, subint))
     else:
         os.system('dspsr -cpu {:d} -N {:s} {:s} -cuda 0,0 -L {:d} -A'.format(fold_cpu, psrname, process_kfname, subint))   
-        
-#def fold_with_second_ringbuf():
-#    # Create key files
-#    # For current version, we only need to create share memory at the first time
-#    # and destroy share memory at the last time
-#    # this will save prepare time for the pipeline as well
-#    process_key_file = open(process_kfname, "w")
-#    process_key_file.writelines("DADA INFO:\n")
-#    process_key_file.writelines("key {:s}\n".format(process_key))
-#    process_key_file.close()
-#
-#    if(first_final == 0):
-#        os.system("dada_db -l -p -k {:s} -b {:d} -n {:s} -r {:s}".format(process_key, process_rbufsz, process_nbuf, process_nreader))
-#
-#        
-#    if(first_final == 1):
-#        os.system("dada_db -k {:s} -d".format(process_key))
-#    
-#def capture_process_with_first_ringbuf():
-#    # Create key files
-#    # For current version, we only need to create share memory at the first time
-#    # and destroy share memory at the last time
-#    # this will save prepare time for the pipeline as well
-#    capture_key_file = open(capture_kfname, "w")
-#    capture_key_file.writelines("DADA INFO:\n")
-#    capture_key_file.writelines("key {:s}\n".format(capture_key))
-#    capture_key_file.close()
-#
-#    if(first_final == 0):
-#        os.system("dada_db -l -p -k {:s} -b {:d} -n {:s} -r {:s}".format(capture_key, capture_rbufsz, capture_nbuf, capture_nreader))
-#    
-#    # Start threads
-#    t_process = threading.Thread(target = process)
-#    t_process.start()
-#    t_capture = threading.Thread(target = capture)
-#    t_capture.start()
-#
-#    # Join threads
-#    t_process.join()
-#    t_capture.join()
-#    if(first_final == 1):
-#        os.system("dada_db -k {:s} -d".format(capture_key))
-#        
+         
 def main():
     # Create key files
-    # For current version, we only need to create share memory at the first time
     # and destroy share memory at the last time
     # this will save prepare time for the pipeline as well
     capture_key_file = open(capture_kfname, "w")
@@ -197,7 +150,6 @@ def main():
     capture_key_file.close()
 
     # Create key files
-    # For current version, we only need to create share memory at the first time
     # and destroy share memory at the last time
     # this will save prepare time for the pipeline as well
     process_key_file = open(process_kfname, "w")
