@@ -58,7 +58,7 @@
 typedef struct conf_t
 {
   int device_id;
-  int debug;
+  int stream;
   
   char hfname[MSTR_LEN];
   int sod;

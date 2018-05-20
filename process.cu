@@ -662,7 +662,7 @@ int register_header(conf_t *conf)
       return EXIT_FAILURE;
     }
   
-  if(conf->debug)
+  if(conf->stream)
     {
       memcpy(conf->hdrbuf_out, conf->hdrbuf_in, DADA_HDR_SIZE);
       if (ascii_header_get(conf->hdrbuf_in, "UTC_START", "%s", conf->utc_start) < 0)  

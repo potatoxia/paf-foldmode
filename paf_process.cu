@@ -17,7 +17,7 @@
 void usage ()
 {
   fprintf (stdout,
-	   "paf_process - Pre-process PAF BMF raw data and get ready for dspsr \n"
+	   "paf_process - Pre-process PAF BMF raw data or DADA format file for dspsr \n"
 	   "\n"
 	   "Usage: paf_process [options]\n"
 	   " -a  Hexacdecimal shared memory key for incoming ring buffer\n"
@@ -31,7 +31,7 @@ void usage ()
 	   " -i  The index of GPU\n"
 	   " -j  The name of DADA header template\n"
 	   " -k  The directory for data recording\n"
-	   " -l  On debug mode or not\n");
+	   " -l  Fold data stream or files\n");
 }
 
 multilog_t *runtime_log;
@@ -103,7 +103,7 @@ int main(int argc, char *argv[])
 	  break;
 	  
 	case 'l':
-	  sscanf(optarg, "%d", &conf.debug);
+	  sscanf(optarg, "%d", &conf.stream);
 	  break;	  
 	}
     }

@@ -38,9 +38,9 @@ def ConfigSectionMap(section):
 #freq = float(data['sky_frequency'])
 #print "The centre frequency is {:.1f}MHz".format(freq)
 
-freq  = 1340.5  # it should be the value from main startup GUI of TOS plus 0.5
-hdr   = 0       # For fold mode, we do not capture header of each packer;
-debug = 0       # For real-time folding, we do not use debug mode;
+freq   = 1340.5  # it should be the value from main startup GUI of TOS plus 0.5
+hdr    = 0       # For fold mode, we do not capture header of each packer;
+stream = 1       # For real-time folding, we fold on data stream
 
 # Read in command line arguments
 parser = argparse.ArgumentParser(description='Fold data from BMF stream')
@@ -136,7 +136,7 @@ def capture():
 
 def process():
     time.sleep(0.5 * sleep_time)
-    os.system('taskset -c {:d} ./paf_process -a {:s} -b {:s} -c {:d} -d {:d} -e {:d} -f {:d} -g {:s} -i {:d} -j {:s} -k {:s} -l {:d}'.format(process_cpu, capture_key, process_key, capture_ndf, nrun_blk, process_nstream, process_ndf, process_sod, numa, process_hfname, directory, debug))
+    os.system('taskset -c {:d} ./paf_process -a {:s} -b {:s} -c {:d} -d {:d} -e {:d} -f {:d} -g {:s} -i {:d} -j {:s} -k {:s} -l {:d}'.format(process_cpu, capture_key, process_key, capture_ndf, nrun_blk, process_nstream, process_ndf, process_sod, numa, process_hfname, directory, stream))
         
 def fold_with_second_ringbuf():
     # Create key files
