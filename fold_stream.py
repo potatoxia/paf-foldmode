@@ -139,7 +139,8 @@ def fold_with_second_ringbuf():
 
     if(first_final == 0):
         os.system("dada_db -l -p -k {:s} -b {:d} -n {:s} -r {:s}".format(process_key, process_rbufsz, process_nbuf, process_nreader))
-    os.system('dspsr -cpu {:d} -N {:s} {:s} -cuda {:d},{:d} -L {:d} -A'.format(fold_cpu, psrname, process_kfname, numa, numa, subint))
+    #os.system('dspsr -cpu {:d} -N {:s} {:s} -cuda {:d},{:d} -L {:d} -A'.format(fold_cpu, psrname, process_kfname, numa, numa, subint))
+    os.system('dspsr -cpu {:d} -N {:s} {:s} -cuda {:d},{:d} -L {:d} -A'.format(fold_cpu, psrname, process_kfname, 0, 0, subint))
     if(first_final == 1):
         os.system("dada_db -k {:s} -d".format(process_key))
     
