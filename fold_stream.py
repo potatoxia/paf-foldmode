@@ -51,9 +51,11 @@ parser.add_argument('-l', '--length', type=float, nargs='+',
 parser.add_argument('-f', '--first_final', type=int, nargs='+',
                     help='First run or final run, 0 for first run and create shared memory, 1 for last run and destroy shared memory, the rest does nothing')
 parser.add_argument('-d', '--directory', type=str, nargs='+',
-                    help='In which directory we record the data')
+                    help='In which directory we record the data and read configuration files and parameter files')
 parser.add_argument('-p', '--psrname', type=str, nargs='+',
                     help='The name of pulsar')
+parser.add_argument('-v', '--visiblegpu', type=str, nargs='+',
+                    help='Visible GPU, the parameter is for the usage inside docker container.')
 
 args         = parser.parse_args()
 cfname       = args.cfname[0]
@@ -63,7 +65,13 @@ nic          = numa + 1
 first_final  = args.first_final[0]
 directory    = args.directory[0]
 psrname      = args.psrname[0]
-
+if(args.visiblegpu[0]=''):
+    multi_gpu = 1;
+if(args.visiblegpu[0]='all'):
+    multi_gpu = 1;
+else:
+    multi_gpu = 0;
+    
 # Play with configuration file
 Config = ConfigParser.ConfigParser()
 Config.read("{:s}/{:s}".format(directory, cfname))
@@ -139,8 +147,13 @@ def fold_with_second_ringbuf():
 
     if(first_final == 0):
         os.system("dada_db -l -p -k {:s} -b {:d} -n {:s} -r {:s}".format(process_key, process_rbufsz, process_nbuf, process_nreader))
-    #os.system('dspsr -cpu {:d} -N {:s} {:s} -cuda {:d},{:d} -L {:d} -A'.format(fold_cpu, psrname, process_kfname, numa, numa, subint))
-    os.system('dspsr -cpu {:d} -N {:s} {:s} -cuda {:d},{:d} -L {:d} -A'.format(fold_cpu, psrname, process_kfname, 0, 0, subint))
+
+    # If we only have one visible GPU, we will have to set it to 0;
+    if (multi_gpu):
+        os.system('dspsr -cpu {:d} -N {:s} {:s} -cuda {:d},{:d} -L {:d} -A'.format(fold_cpu, psrname, process_kfname, numa, numa, subint))
+    else:
+        os.system('dspsr -cpu {:d} -N {:s} {:s} -cuda 0,0 -L {:d} -A'.format(fold_cpu, psrname, process_kfname, subint))
+        
     if(first_final == 1):
         os.system("dada_db -k {:s} -d".format(process_key))
     
