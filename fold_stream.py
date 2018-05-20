@@ -65,9 +65,9 @@ nic          = numa + 1
 first_final  = args.first_final[0]
 directory    = args.directory[0]
 psrname      = args.psrname[0]
-if(args.visiblegpu[0]=''):
+if(args.visiblegpu[0]==''):
     multi_gpu = 1;
-if(args.visiblegpu[0]='all'):
+if(args.visiblegpu[0]=='all'):
     multi_gpu = 1;
 else:
     multi_gpu = 0;
