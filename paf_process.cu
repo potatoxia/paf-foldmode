@@ -31,7 +31,7 @@ void usage ()
 	   " -i  The index of GPU\n"
 	   " -j  The name of DADA header template\n"
 	   " -k  The directory for data recording\n"
-	   " -l  Fold data stream or files\n");
+	   " -l  The source of fold data, stream or files\n");
 }
 
 multilog_t *runtime_log;

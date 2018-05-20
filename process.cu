@@ -664,16 +664,6 @@ int register_header(conf_t *conf)
   
   if(conf->stream)
     {
-      memcpy(conf->hdrbuf_out, conf->hdrbuf_in, DADA_HDR_SIZE);
-      if (ascii_header_get(conf->hdrbuf_in, "UTC_START", "%s", conf->utc_start) < 0)  
-	{
-	  multilog(runtime_log, LOG_ERR, "failed ascii_header_get UTC_START\n");
-	  fprintf(stderr, "Error getting UTC_START, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
-	  return EXIT_FAILURE;
-	}
-    }  
-  else
-    {
       if (fileread(conf->hfname, conf->hdrbuf_out, DADA_HDR_SIZE) < 0)
 	{
 	  multilog(runtime_log, LOG_ERR, "cannot read header from %s\n", conf->hfname);
@@ -729,6 +719,16 @@ int register_header(conf_t *conf)
 	  return EXIT_FAILURE;
 	}
     }
+  else
+    {
+      memcpy(conf->hdrbuf_out, conf->hdrbuf_in, DADA_HDR_SIZE);
+      if (ascii_header_get(conf->hdrbuf_in, "UTC_START", "%s", conf->utc_start) < 0)  
+	{
+	  multilog(runtime_log, LOG_ERR, "failed ascii_header_get UTC_START\n");
+	  fprintf(stderr, "Error getting UTC_START, which happens at \"%s\", line [%d].\n", __FILE__, __LINE__);
+	  return EXIT_FAILURE;
+	}
+    }  
   
   if(ipcbuf_mark_cleared (conf->hdu_in->header_block))  // We are the only one reader, so that we can clear it after read;
     {
