@@ -113,18 +113,7 @@ int main(int argc, char **argv)
   sprintf(conf.efname, "%s/%s", conf.dir, efname);
   sprintf(conf.hfname, "%s/%s", conf.dir, hfname);
 
-  /* Setup log interface */
-  sprintf(log_fname, "%s/paf_capture.log", conf.dir);
-  fp_log = fopen(log_fname, "ab+"); // File to record log information
-  if(fp_log == NULL)
-    {
-      fprintf(stderr, "Can not open log file %s\n", log_fname);
-      return EXIT_FAILURE;
-    }
-  runtime_log = multilog_open("paf_capture", 1);
-  multilog_add(runtime_log, fp_log);
-  multilog(runtime_log, LOG_INFO, "START PAF_CAPTURE\n");
-
+  // Hostname, ip etc
   hostname[HN_LEN] = '0';
   gethostname(hostname, HN_LEN + 1);
   node_id = hostname[HN_LEN - 1] - '0';
@@ -140,7 +129,20 @@ int main(int argc, char **argv)
   fprintf(stdout, "\nWe are working on %s, nic %d.\n", hostname, nic_id);
   fprintf(stdout, "The IP address is %s.\n\n", ip);
 #endif
-  
+
+  /* Setup log interface */
+  //sprintf(log_fname, "%s/paf_capture_%s_NiC%d.log", conf.dir, hostname, nic_id);
+  sprintf(log_fname, "%s/paf_capture.log", conf.dir);
+  fp_log = fopen(log_fname, "ab+"); // File to record log information
+  if(fp_log == NULL)
+    {
+      fprintf(stderr, "Can not open log file %s\n", log_fname);
+      return EXIT_FAILURE;
+    }
+  runtime_log = multilog_open("paf_capture", 1);
+  multilog_add(runtime_log, fp_log);
+  multilog(runtime_log, LOG_INFO, "START PAF_CAPTURE\n");
+
   /* Capture part*/
   int ports[MPORT_NIC];
   for (i = 0; i < NPORT_NIC; i++)
