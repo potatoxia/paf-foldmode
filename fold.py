@@ -38,12 +38,12 @@ def ConfigSectionMap(section):
 #freq = float(data['sky_frequency'])
 #print "The centre frequency is {:.1f}MHz".format(freq)
 
-freq = 1340.5  # it should be the value from main startup GUI of TOS plus 0.5
+freq   = 1340.5  # it should be the value from main startup GUI of TOS plus 0.5
+hdr    = 0       # For fold mode, we do not capture header of each packer;
+stream = 1       # For real-time folding, we fold on data stream
 
 # Read in command line arguments
 parser = argparse.ArgumentParser(description='Fold data from BMF stream')
-parser.add_argument('-q', '--quiet', type=int, nargs='+',
-                    help='0 print out detail runtime information, 1 does not print out detail runtime information')
 parser.add_argument('-c', '--cfname', type=str, nargs='+',
                     help='The name of configuration file')
 parser.add_argument('-n', '--numa', type=int, nargs='+',
@@ -52,22 +52,31 @@ parser.add_argument('-l', '--length', type=float, nargs='+',
                 help='Length of data receiving')
 parser.add_argument('-f', '--first_final', type=int, nargs='+',
                     help='First run or final run, 0 for first run and create shared memory, 1 for last run and destroy shared memory, the rest does nothing')
-parser.add_argument('-d', '--directory', type=int, nargs='+',
-                    help='In which directory we record the data')
-parser.add_argument('-p', '--psrname', type=int, nargs='+',
+parser.add_argument('-d', '--directory', type=str, nargs='+',
+                    help='In which directory we record the data and read configuration files and parameter files')
+parser.add_argument('-p', '--psrname', type=str, nargs='+',
                     help='The name of pulsar')
+parser.add_argument('-v', '--visiblegpu', type=str, nargs='+',
+                    help='Visible GPU, the parameter is for the usage inside docker container.')
 
 args         = parser.parse_args()
-debug        = args.debug[0]
 cfname       = args.cfname[0]
 numa         = args.numa[0]
 length       = args.length[0]
 nic          = numa + 1
 first_final  = args.first_final[0]
-
+directory    = args.directory[0]
+psrname      = args.psrname[0]
+if(args.visiblegpu[0]==''):
+    multi_gpu = 1;
+if(args.visiblegpu[0]=='all'):
+    multi_gpu = 1;
+else:
+    multi_gpu = 0;
+    
 # Play with configuration file
 Config = ConfigParser.ConfigParser()
-Config.read(cfname)
+Config.read("{:s}/{:s}".format(directory, cfname))
 
 # Basic configuration
 nsamp_df     = int(ConfigSectionMap("BasicConf")['nsamp_df'])
@@ -83,7 +92,7 @@ capture_ndf 	= int(ConfigSectionMap("CaptureConf")['ndf'])
 capture_nbuf    = ConfigSectionMap("CaptureConf")['nblk']
 capture_key     = ConfigSectionMap("CaptureConf")['key']
 capture_key     = format(int("0x{:s}".format(capture_key), 0) + 2 * nic, 'x')
-capture_kfname  = "{:s}_nic{:d}.key".format(ConfigSectionMap("CaptureConf")['kfname_prefix'], nic)
+capture_kfname  = "{:s}/{:s}_nic{:d}.key".format(directory, ConfigSectionMap("CaptureConf")['kfname_prefix'], nic)
 capture_efname  = ConfigSectionMap("CaptureConf")['efname']
 capture_hfname  = ConfigSectionMap("CaptureConf")['hfname']
 capture_nreader = ConfigSectionMap("CaptureConf")['nreader']
@@ -91,8 +100,8 @@ capture_sod     = ConfigSectionMap("CaptureConf")['sod']
 capture_rbufsz  = capture_ndf *  nchk_nic * 7168
 
 # Process configuration
-process_key        =  ConfigSectionMap("ProcessConf")['key']
-process_kfname     =  "{:s}_nic{:d}.key".format(ConfigSectionMap("ProcessConf")['kfname_prefix'], nic)
+process_key        = ConfigSectionMap("ProcessConf")['key']
+process_kfname     = "{:s}/{:s}_nic{:d}.key".format(directory, ConfigSectionMap("ProcessConf")['kfname_prefix'], nic)
 process_key        = format(int("0x{:s}".format(process_key), 0) + 2 * nic, 'x')
 process_sod        = ConfigSectionMap("ProcessConf")['sod']
 process_nreader    = ConfigSectionMap("ProcessConf")['nreader']
@@ -108,18 +117,10 @@ process_rbufsz     = int(0.5 * capture_rbufsz * process_osampratei / process_nch
 
 process_hfname     = ConfigSectionMap("ProcessConf")['hfname']
 process_cpu        = ncpu_numa * numa + capture_ncpu
-process_dir        = ConfigSectionMap("ProcessConf")['dir']
 
 # Fold configuration
 fold_cpu = ncpu_numa * numa + capture_ncpu + 1
 subint   = int(ConfigSectionMap("FoldConf")['subint'])
-
-# Diskdb configuration
-diskdb_cpu     = ncpu_numa * numa + capture_ncpu + 2
-diskdb_sod     = ConfigSectionMap("DiskdbConf")['sod']
-diskdb_hfname  = ConfigSectionMap("DiskdbConf")['hfname']
-diskdb_dir     = ConfigSectionMap("DiskdbConf")['dir']
-diskdb_dfname  = ConfigSectionMap("DiskdbConf")['dfname']
 
 # Check the buffer block can be covered with multiple run of multiple streams
 if (capture_ndf % (process_nstream * process_ndf)):
@@ -128,37 +129,64 @@ if (capture_ndf % (process_nstream * process_ndf)):
 else:
     nrun_blk = capture_ndf / (process_nstream * process_ndf)
 
-def diskdb():
-    os.system('taskset -c {:d} ./paf_diskdb -k {:s} -s {:s} -d {:s} -n {:s} -h {:s} -g {:d}'.format(diskdb_cpu, capture_key, diskdb_sod, diskdb_dir, diskdb_dfname, diskdb_hfname, numa))
-
 def capture():
     time.sleep(sleep_time)
-    os.system("./paf_capture -k {:s} -l {:f} -n {:d} -h {:s} -f {:f} -e {:s} -s {:s} -r {:d} -d 0".format(capture_key, length, nic, capture_hfname, freq, capture_efname, capture_sod, capture_ndf))
+    os.system("./paf_capture -a {:s} -b {:s} -c {:d} -d {:d} -e {:d} -f {:s} -g {:s} -i {:f} -j {:f} -k {:s}".format(capture_key, capture_sod, capture_ndf, hdr, nic, capture_hfname, capture_efname, freq, length, directory))
 
 def process():
     time.sleep(0.5 * sleep_time)
-    if debug:
-        os.system('taskset -c {:d} ./paf_process -i {:s} -o {:s} -c {:d} -d {:d} -s {:s} -h {:s} -n {:d} -p {:d} -f {:s} -b {:d} -g 1'.format(process_cpu, capture_key, process_key, capture_ndf, numa, process_sod, process_hfname, process_nstream, process_ndf, process_dir, nrun_blk))
-    else:
-        os.system('taskset -c {:d} ./paf_process -i {:s} -o {:s} -c {:d} -d {:d} -s {:s} -h {:s} -n {:d} -p {:d} -f {:s} -b {:d} -g 0'.format(process_cpu, capture_key, process_key, capture_ndf, numa, process_sod, process_hfname, process_nstream, process_ndf, process_dir, nrun_blk))
-        
-def fold_with_second_ringbuf():
-    # Create key files
-    # For current version, we only need to create share memory at the first time
-    # and destroy share memory at the last time
-    # this will save prepare time for the pipeline as well
-    process_key_file = open(process_kfname, "w")
-    process_key_file.writelines("DADA INFO:\n")
-    process_key_file.writelines("key {:s}\n".format(process_key))
-    process_key_file.close()
+    os.system('taskset -c {:d} ./paf_process -a {:s} -b {:s} -c {:d} -d {:d} -e {:d} -f {:d} -g {:s} -i {:d} -j {:s} -k {:s} -l {:d}'.format(process_cpu, capture_key, process_key, capture_ndf, nrun_blk, process_nstream, process_ndf, process_sod, numa, process_hfname, directory, stream))
 
-    if(first_final == 0):
-        os.system("dada_db -l -p -k {:s} -b {:d} -n {:s} -r {:s}".format(process_key, process_rbufsz, process_nbuf, process_nreader))
-    os.system('dspsr -cpu {:d} -N {:s} {:s} -cuda {:d},{:d} -L {:d} -A'.format(fold_cpu, psrname, process_kfname, numa, numa, subint))
-    if(first_final == 1):
-        os.system("dada_db -k {:s} -d".format(process_key))
-    
-def capture_process_with_first_ringbuf():
+def fold():
+    # If we only have one visible GPU, we will have to set it to 0;
+    if (multi_gpu):
+        os.system('dspsr -cpu {:d} -N {:s} {:s} -cuda {:d},{:d} -L {:d} -A'.format(fold_cpu, psrname, process_kfname, numa, numa, subint))
+    else:
+        os.system('dspsr -cpu {:d} -N {:s} {:s} -cuda 0,0 -L {:d} -A'.format(fold_cpu, psrname, process_kfname, subint))   
+        
+#def fold_with_second_ringbuf():
+#    # Create key files
+#    # For current version, we only need to create share memory at the first time
+#    # and destroy share memory at the last time
+#    # this will save prepare time for the pipeline as well
+#    process_key_file = open(process_kfname, "w")
+#    process_key_file.writelines("DADA INFO:\n")
+#    process_key_file.writelines("key {:s}\n".format(process_key))
+#    process_key_file.close()
+#
+#    if(first_final == 0):
+#        os.system("dada_db -l -p -k {:s} -b {:d} -n {:s} -r {:s}".format(process_key, process_rbufsz, process_nbuf, process_nreader))
+#
+#        
+#    if(first_final == 1):
+#        os.system("dada_db -k {:s} -d".format(process_key))
+#    
+#def capture_process_with_first_ringbuf():
+#    # Create key files
+#    # For current version, we only need to create share memory at the first time
+#    # and destroy share memory at the last time
+#    # this will save prepare time for the pipeline as well
+#    capture_key_file = open(capture_kfname, "w")
+#    capture_key_file.writelines("DADA INFO:\n")
+#    capture_key_file.writelines("key {:s}\n".format(capture_key))
+#    capture_key_file.close()
+#
+#    if(first_final == 0):
+#        os.system("dada_db -l -p -k {:s} -b {:d} -n {:s} -r {:s}".format(capture_key, capture_rbufsz, capture_nbuf, capture_nreader))
+#    
+#    # Start threads
+#    t_process = threading.Thread(target = process)
+#    t_process.start()
+#    t_capture = threading.Thread(target = capture)
+#    t_capture.start()
+#
+#    # Join threads
+#    t_process.join()
+#    t_capture.join()
+#    if(first_final == 1):
+#        os.system("dada_db -k {:s} -d".format(capture_key))
+#        
+def main():
     # Create key files
     # For current version, we only need to create share memory at the first time
     # and destroy share memory at the last time
@@ -168,37 +196,34 @@ def capture_process_with_first_ringbuf():
     capture_key_file.writelines("key {:s}\n".format(capture_key))
     capture_key_file.close()
 
-    if(first_final == 0):
-        os.system("dada_db -l -p -k {:s} -b {:d} -n {:s} -r {:s}".format(capture_key, capture_rbufsz, capture_nbuf, capture_nreader))
-    
-    # Start threads
-    t_process = threading.Thread(target = process)
-    t_process.start()
-    if debug:
-        t_diskdb  = threading.Thread(target = diskdb)
-        t_diskdb.start()
-    else:
-        t_capture = threading.Thread(target = capture)
-        t_capture.start()
+    # Create key files
+    # For current version, we only need to create share memory at the first time
+    # and destroy share memory at the last time
+    # this will save prepare time for the pipeline as well
+    process_key_file = open(process_kfname, "w")
+    process_key_file.writelines("DADA INFO:\n")
+    process_key_file.writelines("key {:s}\n".format(process_key))
+    process_key_file.close()
 
-    # Join threads
-    t_process.join()
-    if debug:
-        t_diskdb.join()
-    else:
-        t_capture.join()
-    if(first_final == 1):
-        os.system("dada_db -k {:s} -d".format(capture_key))
+    os.system("dada_db -l -p -k {:s} -b {:d} -n {:s} -r {:s}".format(capture_key, capture_rbufsz, capture_nbuf, capture_nreader))
+    os.system("dada_db -l -p -k {:s} -b {:d} -n {:s} -r {:s}".format(process_key, process_rbufsz, process_nbuf, process_nreader))
         
-def main():
-    t_first = threading.Thread(target = capture_process_with_first_ringbuf)
-    t_second = threading.Thread(target = fold_with_second_ringbuf)
+    t_capture = threading.Thread(target = capture)
+    t_process = threading.Thread(target = process)
+    t_fold    = threading.Thread(target = fold)
     
-    t_first.start()
-    t_second.start()
+    t_capture.start()
+    t_process.start()
+    t_fold.start()
     
-    t_first.join()
-    t_second.join()
+    t_capture.join()
+    t_process.join()
+    t_fold.join()
+
+    os.system("dada_db -d -k {:s}".format(capture_key))
+    os.system("dada_db -d -k {:s}".format(process_key))
+    
+    os.system("mv *.ar {:s}".format(directory))
 
 if __name__ == "__main__":
     main()
