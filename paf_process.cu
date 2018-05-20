@@ -13,6 +13,27 @@
 #include "process.cuh"
 #include "cudautil.cuh"
 
+
+void usage ()
+{
+  fprintf (stdout,
+	   "paf_process - Pre-process PAF BMF raw data and get ready for dspsr \n"
+	   "\n"
+	   "Usage: paf_process [options]\n"
+	   " -a  Hexacdecimal shared memory key for incoming ring buffer\n"
+	   " -b  Hexacdecimal shared memory key for outcoming ring buffer\n"
+	   " -c  The number of data frame steps of each incoming ring buffer block\n"
+	   " -d  How many times we need to repeat the process and finish one incoming block\n"
+	   " -e  The number of streams \n"
+	   " -f  The number of data stream steps of each stream\n"
+	   " -g  Enable start-of-data or not\n"
+	   " -h  show help\n"
+	   " -i  The index of GPU\n"
+	   " -j  The name of DADA header template\n"
+	   " -k  The directory for data recording\n"
+	   " -l  On debug mode or not\n");
+}
+
 multilog_t *runtime_log;
 
 int main(int argc, char *argv[])
@@ -23,32 +44,15 @@ int main(int argc, char *argv[])
   char log_fname[MSTR_LEN], hfname[MSTR_LEN];
   
   /* Initial part */  
-  while((arg=getopt(argc,argv,"c:o:i:d:s:h:n:p:r:g:f:b:")) != -1)
+  while((arg=getopt(argc,argv,"a:b:c:d:e:f:g:hi:j:k:l:")) != -1)
     {
       switch(arg)
-	{	  
-	case 'h':	  	  
-	  sscanf(optarg, "%s", hfname);
-	  break;
-
-	case 'c':
-	  sscanf(optarg, "%lf", &conf.rbufin_ndfstp);
-	  break;
+	{
+	case 'h':
+	  usage();
+	  return EXIT_SUCCESS;
 	  
-	case 's':
-	  sscanf(optarg, "%d", &conf.sod);
-	  break;
-	  
-	case 'o':	  
-	  if (sscanf (optarg, "%x", &conf.key_out) != 1)
-	    {
-	      //multilog (runtime_log, LOG_ERR, "Could not parse key from %s, which happens at \"%s\", line [%d].\n", optarg, __FILE__, __LINE__);
-	      fprintf (stderr, "Could not parse key from %s, which happens at \"%s\", line [%d].\n", optarg, __FILE__, __LINE__);
-	      return EXIT_FAILURE;
-	    }
-	  break;
-	  
-	case 'i':	  
+	case 'a':	  
 	  if (sscanf (optarg, "%x", &conf.key_in) != 1)
 	    {
 	      //multilog (runtime_log, LOG_ERR, "Could not parse key from %s, which happens at \"%s\", line [%d].\n", optarg, __FILE__, __LINE__);
@@ -57,28 +61,49 @@ int main(int argc, char *argv[])
 	    }
 	  break;
 	  
-	case 'd':
-	  sscanf(optarg, "%d", &conf.device_id);
+	case 'b':	  
+	  if (sscanf (optarg, "%x", &conf.key_out) != 1)
+	    {
+	      //multilog (runtime_log, LOG_ERR, "Could not parse key from %s, which happens at \"%s\", line [%d].\n", optarg, __FILE__, __LINE__);
+	      fprintf (stderr, "Could not parse key from %s, which happens at \"%s\", line [%d].\n", optarg, __FILE__, __LINE__);
+	      return EXIT_FAILURE;
+	    }
 	  break;
-
-	case 'n':
+	  	  
+	case 'c':
+	  sscanf(optarg, "%lf", &conf.rbufin_ndfstp);
+	  break;
+	  
+	case 'd':
+	  sscanf(optarg, "%d", &conf.nrun_blk);
+	  break;
+	  
+	case 'e':
 	  sscanf(optarg, "%d", &conf.nstream);
 	  break;
 	  
-	case 'p':
+	case 'f':
 	  sscanf(optarg, "%d", &conf.stream_ndfstp);
 	  break;
-	  
+	  	  
 	case 'g':
-	  sscanf(optarg, "%d", &conf.debug);
+	  sscanf(optarg, "%d", &conf.sod);
 	  break;
 	  
-	case 'f':
+	case 'i':
+	  sscanf(optarg, "%d", &conf.device_id);
+	  break;
+
+	case 'j':	  	  
+	  sscanf(optarg, "%s", hfname);
+	  break;
+
+	case 'k':
 	  sscanf(optarg, "%s", conf.dir);
 	  break;
 	  
-	case 'b':
-	  sscanf(optarg, "%d", &conf.nrun_blk);
+	case 'l':
+	  sscanf(optarg, "%d", &conf.debug);
 	  break;	  
 	}
     }

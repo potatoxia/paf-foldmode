@@ -38,7 +38,9 @@ def ConfigSectionMap(section):
 #freq = float(data['sky_frequency'])
 #print "The centre frequency is {:.1f}MHz".format(freq)
 
-freq = 1340.5  # it should be the value from main startup GUI of TOS plus 0.5
+freq  = 1340.5  # it should be the value from main startup GUI of TOS plus 0.5
+hdr   = 0       # For fold mode, we do not capture header of each packer;
+debug = 0       # For real-time folding, we do not use debug mode;
 
 # Read in command line arguments
 parser = argparse.ArgumentParser(description='Fold data from BMF stream')
@@ -129,11 +131,12 @@ else:
 
 def capture():
     time.sleep(sleep_time)
-    os.system("./paf_capture -k {:s} -l {:f} -n {:d} -h {:s} -f {:f} -e {:s} -s {:s} -r {:d} -o {:s} -d 0".format(capture_key, length, nic, capture_hfname, freq, capture_efname, capture_sod, capture_ndf, directory))
+    #os.system("./paf_capture -a {:s} -b {:f} -c {:d} -d {:s} -e {:f} -f {:s} -g {:s} -i {:d} -j {:s} -k 0".format(capture_key, length, nic, capture_hfname, freq, capture_efname, capture_sod, capture_ndf, directory))
+    os.system("./paf_capture -a {:s} -b {:s} -c {:d} -d {:d} -e {:d} -f {:s} -g {:s} -i {:f} -j {:f} -k {:s}".format(capture_key, capture_sod, capture_ndf, hdr, nic, capture_hfname, capture_efname, freq, length, directory))
 
 def process():
     time.sleep(0.5 * sleep_time)
-    os.system('taskset -c {:d} ./paf_process -i {:s} -o {:s} -c {:d} -d {:d} -s {:s} -h {:s} -n {:d} -p {:d} -f {:s} -b {:d} -g 0'.format(process_cpu, capture_key, process_key, capture_ndf, numa, process_sod, process_hfname, process_nstream, process_ndf, directory, nrun_blk))
+    os.system('taskset -c {:d} ./paf_process -a {:s} -b {:s} -c {:d} -d {:d} -e {:d} -f {:d} -g {:s} -i {:d} -j {:s} -k {:s} -l {:d}'.format(process_cpu, capture_key, process_key, capture_ndf, nrun_blk, process_nstream, process_ndf, process_sod, numa, process_hfname, directory, debug))
         
 def fold_with_second_ringbuf():
     # Create key files

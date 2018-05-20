@@ -23,6 +23,26 @@ multilog_t *runtime_log;
   7. Check the write out data;
 */
 
+
+void usage()
+{
+  fprintf (stdout,
+	   "paf_capture - capture PAF BMF raw data from NiC\n"
+	   "\n"
+	   "Usage: paf_capture [options]\n"
+	   " -a Hexadecimal shared memory key for capture \n"
+	   " -b Enable start-of-data or not    \n"
+	   " -c The size of each capture ring buffer block in data frame steps    \n"
+	   " -d Record header of data packets or not    \n"
+	   " -e Which NiC we will capture data from   \n"
+	   " -f The name of DADA header template file    \n"
+	   " -g The name of epoch file, which records the conversion of BMF timing  \n"
+	   " -h Show help    \n"
+	   " -i The center frequency of captured data    \n"
+	   " -j The length of data capture    \n"
+	   " -k Which directory will be used to receive data    \n");
+}
+
 int main(int argc, char **argv)
 {
   /* Initial part */ 
@@ -36,11 +56,15 @@ int main(int argc, char **argv)
   FILE *fp_log = NULL;
   char log_fname[MSTR_LEN], hfname[MSTR_LEN], efname[MSTR_LEN];
   
-  while((arg=getopt(argc,argv,"k:l:n:c:h:f:e:s:r:d:o:")) != -1)
+  while((arg=getopt(argc,argv,"a:b:c:d:e:f:g:hi:j:k:")) != -1)
     {
       switch(arg)
 	{
-	case 'k':	  	  
+	case 'h':
+	  usage();
+	  return EXIT_SUCCESS;
+	  
+	case 'a':	  	  
 	  if (sscanf (optarg, "%x", &conf.key) != 1)
 	    {
 	      //multilog(runtime_log, LOG_INFO, "Could not parse key from %s, which happens at \"%s\", line [%d].\n", optarg, __FILE__, __LINE__);
@@ -49,40 +73,40 @@ int main(int argc, char **argv)
 	    }
 	  break;
 
-	case 'o':
-	  sscanf(optarg, "%s", conf.dir);
-	  break;
-	  
-	case 'l':
-	  sscanf(optarg, "%lf", &conf.length);
-	  break;
-	  
-	case 'n':
-	  sscanf(optarg, "%d", &nic_id);
-	  break;
-
-	case 'h':	  	  
-	  sscanf(optarg, "%s", hfname);
-	  break;
-
-	case 'e':
-	  sscanf(optarg, "%s", efname);
-	  break;
-	  
-	case 'f':
-	  sscanf(optarg, "%lf", &conf.freq);
-	  break;
-	  
-	case 's':
+	case 'b':
 	  sscanf(optarg, "%d", &conf.sod);
 	  break;
-	  
-	case 'r':
+
+	case 'c':
 	  sscanf(optarg, "%zu", &conf.rbuf_ndf);
 	  break;
 	  
 	case 'd':
 	  sscanf(optarg, "%d", &conf.hdr);
+	  break;
+	  
+	case 'e':
+	  sscanf(optarg, "%d", &nic_id);
+	  break;
+
+	case 'f':	  	  
+	  sscanf(optarg, "%s", hfname);
+	  break;
+
+	case 'g':
+	  sscanf(optarg, "%s", efname);
+	  break;
+
+	case 'i':
+	  sscanf(optarg, "%lf", &conf.freq);
+	  break;
+	
+	case 'j':
+	  sscanf(optarg, "%lf", &conf.length);
+	  break;
+	  	    
+	case 'k':
+	  sscanf(optarg, "%s", conf.dir);
 	  break;
 	}
     }

@@ -65,7 +65,7 @@ typedef struct conf_t
   key_t key;
   dada_hdu_t *hdu;
   
-  size_t rbuf_ndf, rbuf_nblk;
+  size_t rbuf_ndf;// rbuf_nblk;
   int hdr;
 
   char utc_start[MSTR_LEN];
