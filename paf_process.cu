@@ -71,7 +71,7 @@ int main(int argc, char *argv[])
 	  break;
 	  	  
 	case 'c':
-	  sscanf(optarg, "%lf", &conf.rbufin_ndfstp);
+	  sscanf(optarg, "%lf", &conf.rbufin_ndf);
 	  break;
 	  
 	case 'd':
@@ -83,7 +83,7 @@ int main(int argc, char *argv[])
 	  break;
 	  
 	case 'f':
-	  sscanf(optarg, "%d", &conf.stream_ndfstp);
+	  sscanf(optarg, "%d", &conf.stream_ndf);
 	  break;
 	  	  
 	case 'g':
