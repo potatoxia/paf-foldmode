@@ -40,7 +40,7 @@ void usage()
 	   " -h Show help    \n"
 	   " -i The center frequency of captured data    \n"
 	   " -j The length of data capture    \n"
-	   " -k Which directory will be used to receive data    \n");
+	   " -k Which directory will be used to record data    \n");
 }
 
 int main(int argc, char **argv)
