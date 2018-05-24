@@ -1,6 +1,6 @@
 #!/usr/bin/env python
 
-# ./fold_stream.py -c fold_stream.conf -n 0 -l 10 -d /beegfs/DENG/docker/ -p J0218+4232 -v all 
+# ./fold_stream.py -a fold_stream.conf -b 0 -c 10 -d /beegfs/DENG/docker/ -e J0218+4232 -f all 
 # tempo2 -f mypar.par -pred "sitename mjd1 mjd2 freq1 freq2 ntimecoeff nfreqcoeff seg_length"
 
 # I made assumption here:
