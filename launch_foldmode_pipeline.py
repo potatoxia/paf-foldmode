@@ -15,7 +15,7 @@
 
 import os, argparse
 
-# ./launch_foldmode_pipeline.py -a 20 -b 0 -c 80000000000 -d J0218+4232 -e fold_stream.conf -f /beegfs/DENG/docker -g /home/pulsar -i /home/pulsar/paf-searchmode -j 50000 -k 50000 -l searchmode
+# ./launch_foldmode_pipeline.py -a 20 -b 0 -c 80000000000 -d J0218+4232 -e fold_stream.conf -f /beegfs/DENG/docker -g /home/pulsar -j 50000 -k 50000 -l searchmode
 # Read in command line arguments
 parser = argparse.ArgumentParser(description='Launch the pipeline to catpure and fold data stream from BMF')
 parser.add_argument('-a', '--length', type=float, nargs='+',
