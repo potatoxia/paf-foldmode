@@ -1,5 +1,6 @@
 # Develop a image from xinpingdeng/cuda9.1-cudnn7-devel-ubuntu16.04-with-paf-essential
-FROM xinpingdeng/cuda9.1-cudnn7-devel-ubuntu16.04-with-paf-essential
+#FROM xinpingdeng/cuda9.1-cudnn7-devel-ubuntu16.04-with-paf-essential
+FROM xinpingdeng/essential
 # docker run --runtime=nvidia ....
 
 # Set current user to pulsar and change to $HOME
@@ -15,5 +16,6 @@ RUN git config user.name "xinpingdeng" && \
     git checkout dev 
 RUN ./rebuild.py 0
 
-# ./fold_stream.py -c fold_stream.conf -n 0 -l 10 -d /beegfs/DENG/docker/ -p J0218+4232 -v all 
-ENTRYPOINT ["./fold_stream.py"]
+# ./fold_stream.py -a fold_stream.conf -b 0 -c 10 -d /beegfs/DENG/docker/ -e J0218+4232 -f all 
+#ENTRYPOINT ["./fold_stream.py"]
+ENTRYPOINT ["./fold_file.py"]

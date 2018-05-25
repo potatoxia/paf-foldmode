@@ -1,0 +1,5 @@
+dspsr -V -cpu 2 -E J0332+5434.par process.key -cuda 0,0 -L 10 -A
+docker run --runtime=nvidia -v /beegfs/DENG/docker:/beegfs/DENG/docker -v /home/pulsar/paf-foldmode:/home/pulsar/paf-foldmode -v /home/pulsar/:/home/pulsar/ -u 50000:50000 -e NVIDIA_VISIBLE_DEVICES=0 -e NVIDIA_DRIVER_CAPABILITIES=all --rm --ulimit memlock=80000000000 --net=host --name foldmode foldmode -a fold_file.conf -b /beegfs/DENG/docker/ -c J0332+5434 -d 0 -e 0 -f 2018-04-17-19:22:11.56868_0000000000000000.000000.dada
+
+You are going to a docker container with the name foldmode!
+

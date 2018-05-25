@@ -9,9 +9,8 @@ psrname = 'J0218+4232'
 cfname  = 'fold_stream.conf'
 hdir    = '/home/pulsar/'
 ddir    = '/beegfs/DENG/docker'
-sdir    = '/home/pulsar/paf-foldmode'
 uid     = 50000
 gid     = 50000
 dname   = 'foldmode'
 
-os.system('./launch_foldmode_pipeline.py -a {:f} -b {:d} -c {:d} -d {:s} -e {:s} -f {:s} -g {:s} -i {:s} -j {:d} -k {:d} -l {:s}'.format(length, numa, memsize, psrname, cfname, ddir, hdir, sdir, uid, gid, dname))
+os.system('./launch_foldmode_pipeline.py -a {:f} -b {:d} -c {:d} -d {:s} -e {:s} -f {:s} -g {:s} -i {:d} -j {:d} -k {:s}'.format(length, numa, memsize, psrname, cfname, ddir, hdir, uid, gid, dname))

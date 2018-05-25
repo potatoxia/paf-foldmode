@@ -126,6 +126,7 @@ def fold():
     if (multi_gpu):
         os.system('dspsr -cpu {:d} -E {:s}.par {:s} -cuda {:d},{:d} -L {:d} -A'.format(fold_cpu, psrname, process_kfname, gpu, gpu, subint))
     else:
+        print ('dspsr -cpu {:d} -E {:s}.par {:s} -cuda 0,0 -L {:d} -A'.format(fold_cpu, psrname, process_kfname, subint))   
         os.system('dspsr -cpu {:d} -E {:s}.par {:s} -cuda 0,0 -L {:d} -A'.format(fold_cpu, psrname, process_kfname, subint))   
          
 def main():
