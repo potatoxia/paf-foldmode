@@ -760,8 +760,7 @@ int dat_offs_scl(conf_t conf)
   CudaSafeCall(cudaMemcpy(conf.hdat_scl_search, conf.ddat_scl_search, sizeof(float) * NCHAN_SEARCH, cudaMemcpyDeviceToHost));
   CudaSafeCall(cudaMemcpy(conf.hsquare_mean_search, conf.dsquare_mean_search, sizeof(float) * NCHAN_SEARCH, cudaMemcpyDeviceToHost));
 #endif
-  
-  
+ 
 #ifdef DEBUG
 #ifdef FOLD_MODE
   for (i = 0; i< NCHAN_FOLD; i++)

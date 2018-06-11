@@ -17,7 +17,7 @@
 
 #define CUFFT_NX64
 #define FOLD_MODE    
-#define CUFFT_POW2
+#define FOLD_NPOW2
 
 #define DADA_HDR_SIZE         4096
 #define NCHK_NIC              48   // How many frequency chunks we will receive, we should read the number from metadata
@@ -37,63 +37,59 @@
 #define CUFFT_RANK2           1               // Only for fold mode
 
 #ifdef CUFFT_NX32
-#ifdef SEARCH_MODE
 #define CUFFT_NX1             32
 #define CUFFT_MOD1            13              // Set to remove oversampled data
 #define NCHAN_KEEP1           27              // (OSAMP_RATEI * CUFFT_NX1)
+
+#if defined (FOLD_MODE) && defined(FOLD_NPOW2)
+#define CUFFT_NX2             27
+#define CUFFT_MOD2            14              
+#define NCHAN_KEEP2           8748            // (CUFFT_NX2 * NCHAN_FOLD) for fold mode, a good number which is divisible by NCHAN_SEARCH for search mode
+#define NCHAN_EDGE            162             // (NCHAN_KEEP1 * NCHK_NIC * NCHAN_CHK - NCHAN_KEEP2)/2
+#define TILE_DIM              27              // CUFFT_NX2, only for fold mode
+#define NROWBLOCK_TRANS       9               // a good number which can be devided by CUFFT_NX2 (TILE_DIM), only for fold mode
+#define NCHAN_FOLD            324             // Final number of channels for fold mode
+#define NCHAN_RATEI           (28.0/27.0)     // (NCHAN_KEEP1 * NCHK_NIC * NCHAN_CHK)/NCHAN_KEEP2
+#define NCHAN_SEARCH          1024            // Final number of channels for search mode
+#else
 #define CUFFT_NX2             32
 #define CUFFT_MOD2            16              // CUFFT_NX2 / 2
 #define NCHAN_KEEP2           8192            // (CUFFT_NX2 * NCHAN_FOLD) for fold mode, a good number which is divisible by NCHAN_SEARCH for search mode
 #define NCHAN_EDGE            440             // (NCHAN_KEEP1 * NCHK_NIC * NCHAN_CHK - NCHAN_KEEP2)/2
 #define TILE_DIM              32              // CUFFT_NX2, only for fold mode
 #define NROWBLOCK_TRANS       8               // a good number which can be devided by CUFFT_NX2 (TILE_DIM), only for fold mode
-#endif
-#ifdef FOLD_MODE
-#ifdef CUFFT_POW2
-#define CUFFT_NX1             32
-#define CUFFT_MOD1            13              // Set to remove oversampled data
-#define NCHAN_KEEP1           27              // (OSAMP_RATEI * CUFFT_NX1)
-#define CUFFT_NX2             32
-#define CUFFT_MOD2            16              // CUFFT_NX2 / 2
-#define NCHAN_KEEP2           8192            // (CUFFT_NX2 * NCHAN_FOLD) for fold mode, a good number which is divisible by NCHAN_SEARCH for search mode
-#define NCHAN_EDGE            440             // (NCHAN_KEEP1 * NCHK_NIC * NCHAN_CHK - NCHAN_KEEP2)/2
-#define TILE_DIM              32              // CUFFT_NX2, only for fold mode
-#define NROWBLOCK_TRANS       8               // a good number which can be devided by CUFFT_NX2 (TILE_DIM), only for fold mode
-#endif
+#define NCHAN_FOLD            256             // Final number of channels for fold mode
+#define NCHAN_SEARCH          1024            // Final number of channels for search mode
+#define NCHAN_RATEI           1.107421875     // (NCHAN_KEEP1 * NCHK_NIC * NCHAN_CHK)/NCHAN_KEEP2
 #endif
 #endif
 
 #ifdef CUFFT_NX64
-#ifdef SEARCH_MODE
 #define CUFFT_NX1             64
 #define CUFFT_MOD1            27              // Set to remove oversampled data
 #define NCHAN_KEEP1           54              // (OSAMP_RATEI * CUFFT_NX1)
+#if defined (FOLD_MODE) && defined(FOLD_NPOW2)
+#define CUFFT_NX2             54
+#define CUFFT_MOD2            27              // CUFFT_NX2 / 2
+#define NCHAN_KEEP2           17496            // (CUFFT_NX2 * NCHAN_FOLD) for fold mode, a good number which is divisible by NCHAN_SEARCH for search mode
+#define NCHAN_EDGE            324             // (NCHAN_KEEP1 * NCHK_NIC * NCHAN_CHK - NCHAN_KEEP2)/2
+#define TILE_DIM              54              // CUFFT_NX2, only for fold mode
+#define NROWBLOCK_TRANS       18               // a good number which can be devided by CUFFT_NX2 (TILE_DIM), only for fold mode
+#define NCHAN_FOLD            324             // Final number of channels for fold mode
+#define NCHAN_RATEI           (28.0/27.0)     // (NCHAN_KEEP1 * NCHK_NIC * NCHAN_CHK)/NCHAN_KEEP2
+#define NCHAN_SEARCH          1024            // Final number of channels for search mode
+#else
 #define CUFFT_NX2             64
 #define CUFFT_MOD2            32              // CUFFT_NX2 / 2
 #define NCHAN_KEEP2           16384           // (CUFFT_NX2 * NCHAN_FOLD) for fold mode, a good number which is divisible by NCHAN_SEARCH for search mode
 #define NCHAN_EDGE            880             // (NCHAN_KEEP1 * NCHK_NIC * NCHAN_CHK - NCHAN_KEEP2)/2
 #define TILE_DIM              64              // CUFFT_NX2, only for fold mode
-#define NROWBLOCK_TRANS       16              // a good number which can be devided by CUFFT_NX2 (TILE_DIM), only for fold mode
-#endif
-#ifdef FOLD_MODE
-#ifdef CUFFT_POW2
-#define CUFFT_NX1             64
-#define CUFFT_MOD1            27              // Set to remove oversampled data
-#define NCHAN_KEEP1           54              // (OSAMP_RATEI * CUFFT_NX1)
-#define CUFFT_NX2             64
-#define CUFFT_MOD2            32              // CUFFT_NX2 / 2
-#define NCHAN_KEEP2           16384           // (CUFFT_NX2 * NCHAN_FOLD) for fold mode, a good number which is divisible by NCHAN_SEARCH for search mode
-#define NCHAN_EDGE            880             // (NCHAN_KEEP1 * NCHK_NIC * NCHAN_CHK - NCHAN_KEEP2)/2
-#define TILE_DIM              64              // CUFFT_NX2, only for fold mode
-#define NROWBLOCK_TRANS       16              // a good number which can be devided by CUFFT_NX2 (TILE_DIM), only for fold mode
-#endif
-#endif
-#endif
-
-#define NCHAN_RATEI           1.107421875     // (NCHAN_KEEP1 * NCHK_NIC * NCHAN_CHK)/NCHAN_KEEP2
+#define NROWBLOCK_TRANS       8              // a good number which can be devided by CUFFT_NX2 (TILE_DIM), only for fold mode
 #define NCHAN_FOLD            256             // Final number of channels for fold mode
 #define NCHAN_SEARCH          1024            // Final number of channels for search mode
-//#define NCHAN_SEARCH          512            // Final number of channels for search mode
+#define NCHAN_RATEI           1.107421875     // (NCHAN_KEEP1 * NCHK_NIC * NCHAN_CHK)/NCHAN_KEEP2
+#endif
+#endif
 
 #define SCL_INT8              127.0f          // For int8_t, for fold mode
 #define SCL_UINT8             255.0f          // For uint8_t, for search mode
