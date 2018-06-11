@@ -310,12 +310,60 @@ __global__ void transpose_scale_kernel2(cufftComplex *dbuf_rt2, int8_t *dbuf_out
     }
 }
 
-/*
-  This is a speedup version of previous kernel. 
-  The speedup works with input and output array.
-  There is a bank conflict problem, which cause the speed low than best.
-  Need more time to fix it and get the best speed.
-  Leave it for now
+///*
+//  This is a speedup version of previous kernel. 
+//  The speedup works with input and output array.
+//  There is a bank conflict problem, which cause the speed low than best.
+//  Need more time to fix it and get the best speed.
+//  Leave it for now
+//*/
+//__global__ void transpose_scale_kernel3(cufftComplex *dbuf_rt2, int8_t *dbuf_out, size_t offset_rt2, int scale)
+//{
+//  __shared__ int8_t tile[NPOL_SAMP * NDIM_POL][TILE_DIM][TILE_DIM];
+//
+//  int i, x, y;
+//  size_t loc, loc_rt2, loc_out;
+//  cufftComplex p1, p2;
+//
+//  x = threadIdx.x;
+//  loc = (blockIdx.x * gridDim.y * blockDim.x * blockDim.y +
+//	 blockIdx.y * blockDim.x * blockDim.y) * TILE_DIM / NROWBLOCK_TRANS +
+//    x;
+//    
+//  for (i = 0; i < TILE_DIM; i += NROWBLOCK_TRANS)
+//    {
+//      y = threadIdx.y + i;
+//      loc_rt2 = loc + y * blockDim.x;
+//     
+//      p1 = dbuf_rt2[loc_rt2];
+//      p2 = dbuf_rt2[loc_rt2 + offset_rt2];
+//
+//      tile[0][y][x] = __float2int_rz(p1.x/(float)CUFFT_NX2) >> scale;
+//      tile[1][y][x] = __float2int_rz(p1.y/(float)CUFFT_NX2) >> scale;
+//      tile[2][y][x] = __float2int_rz(p2.x/(float)CUFFT_NX2) >> scale;
+//      tile[3][y][x] = __float2int_rz(p2.y/(float)CUFFT_NX2) >> scale;
+//    }
+//
+//  __syncthreads(); // sync all threads in the same block;
+//  
+//  loc = blockIdx.x * gridDim.y * blockDim.x * blockDim.y * TILE_DIM / NROWBLOCK_TRANS +
+//    blockIdx.y * blockDim.x +
+//    x;
+//    
+//  for (i = 0; i < TILE_DIM; i += NROWBLOCK_TRANS)
+//    {
+//      y = threadIdx.y + i;
+//      loc_out = (loc + y * gridDim.y * blockDim.x) * NPOL_SAMP * NDIM_POL;
+//      
+//      dbuf_out[loc_out]     = tile[0][x][y];
+//      dbuf_out[loc_out + 1] = tile[1][x][y];
+//      dbuf_out[loc_out + 2] = tile[2][x][y];
+//      dbuf_out[loc_out + 3] = tile[3][x][y];
+//    }
+//}
+
+/* 
+   This is the speedup version with dat_scl and dat_offs calculated from data
 */
 __global__ void transpose_scale_kernel3(cufftComplex *dbuf_rt2, int8_t *dbuf_out, size_t offset_rt2, int scale)
 {
@@ -326,22 +374,22 @@ __global__ void transpose_scale_kernel3(cufftComplex *dbuf_rt2, int8_t *dbuf_out
   cufftComplex p1, p2;
 
   x = threadIdx.x;
-  loc = (blockIdx.x * gridDim.y * blockDim.x * blockDim.y +
-	 blockIdx.y * blockDim.x * blockDim.y) * TILE_DIM / NROWBLOCK_TRANS +
+  loc = blockIdx.x * gridDim.y * blockDim.x * TILE_DIM +
+    blockIdx.y * blockDim.x * TILE_DIM +
     x;
-    
+
   for (i = 0; i < TILE_DIM; i += NROWBLOCK_TRANS)
     {
       y = threadIdx.y + i;
       loc_rt2 = loc + y * blockDim.x;
-     
+            
       p1 = dbuf_rt2[loc_rt2];
       p2 = dbuf_rt2[loc_rt2 + offset_rt2];
 
-      tile[0][y][x] = __float2int_rz(p1.x) >> scale;
-      tile[1][y][x] = __float2int_rz(p1.y) >> scale;
-      tile[2][y][x] = __float2int_rz(p2.x) >> scale;
-      tile[3][y][x] = __float2int_rz(p2.y) >> scale;
+      tile[0][y][x] = __float2int_rz(p1.x/CUFFT_NX2)>>scale;
+      tile[1][y][x] = __float2int_rz(p1.y/CUFFT_NX2)>>scale;
+      tile[2][y][x] = __float2int_rz(p2.x/CUFFT_NX2)>>scale;
+      tile[3][y][x] = __float2int_rz(p2.y/CUFFT_NX2)>>scale;
     }
 
   __syncthreads(); // sync all threads in the same block;

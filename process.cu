@@ -412,7 +412,7 @@ int do_process(conf_t conf)
 	      CufftSafeCall(cufftExecC2C(conf.fft_plans2[j], &conf.buf_rt2[bufrt2_offset], &conf.buf_rt2[bufrt2_offset], CUFFT_INVERSE));
 	      
 	      /* Get final output */
-	      //transpose_scale_kernel3<<<gridsize_transpose_scale3, blocksize_transpose_scale3, 0, conf.streams[j]>>>(&conf.buf_rt2[bufrt2_offset], &conf.dbuf_out[dbufout_offset], conf.nsamp2, conf.scale);  
+	      //transpose_scale_kernel3<<<gridsize_transpose_scale3, blocksize_transpose_scale3, 0, conf.streams[j]>>>(&conf.buf_rt2[bufrt2_offset], &conf.dbuf_out[dbufout_offset], conf.nsamp2, 8);
 	      transpose_scale_kernel4<<<gridsize_transpose_scale4, blocksize_transpose_scale4, 0, conf.streams[j]>>>(&conf.buf_rt2[bufrt2_offset], &conf.dbuf_out[dbufout_offset], conf.nsamp2, conf.ddat_offs, conf.ddat_scl);   
 	      //transpose_float_kernel<<<gridsize_transpose_float, blocksize_transpose_float, 0, conf.streams[j]>>>(&conf.buf_rt2[bufrt2_offset], &conf.dbuf_out[dbufout_offset], conf.nsamp2);   
 	      

@@ -29,10 +29,12 @@ def ConfigSectionMap(section):
 ##sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, mreq)  
 #pkt, address = sock.recvfrom(1<<16)
 #data = json.loads(pkt)#['beams_direction']#['beam01']
+#print data
 ##sock.shutdown(socket.SHUT_RDWR)
 #sock.close()
 #freq = float(data['sky_frequency'])
 #print "The centre frequency is {:.1f}MHz".format(freq)
+#print str(data['pk01']['on_source'])
 
 freq   = 1340.5  # it should be the value from main startup GUI of TOS plus 0.5
 stream = 0       # Now we are folding files
