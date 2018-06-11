@@ -133,7 +133,6 @@ __global__ void swap_select_transpose_swap_kernel(cufftComplex *dbuf_rt1, cufftC
 	  loc2 = remainder2 + CUFFT_NX2 * (int)(loc1 / CUFFT_NX2);
 	  
 	  loc_rt2 = blockIdx.y * NCHAN_KEEP2 + loc2;  
-
 	  
 	  p1 = dbuf_rt1[loc_rt1];
 	  dbuf_rt2[loc_rt2].x = p1.x;
