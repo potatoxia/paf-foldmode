@@ -737,7 +737,7 @@ int dat_offs_scl(conf_t conf)
 #ifdef FOLD_MODE
   scale_kernel<<<gridsize_scale_fold, blocksize_scale_fold>>>(conf.ddat_offs_fold, conf.dsquare_mean_fold, conf.ddat_scl_fold);
 #else
-    scale_kernel<<<gridsize_scale_search, blocksize_scale_search>>>(conf.ddat_offs_search, conf.dsquare_mean_search, conf.ddat_scl_search);
+  scale_kernel<<<gridsize_scale_search, blocksize_scale_search>>>(conf.ddat_offs_search, conf.dsquare_mean_search, conf.ddat_scl_search);
 #endif
   CudaSynchronizeCall();
   

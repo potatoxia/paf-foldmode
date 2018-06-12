@@ -17,7 +17,7 @@
 
 #define CUFFT_NX64
 #define FOLD_MODE    
-#define FOLD_NPOW2
+//#define FOLD_NPOW2
 
 #define DADA_HDR_SIZE         4096
 #define NCHK_NIC              48   // How many frequency chunks we will receive, we should read the number from metadata
