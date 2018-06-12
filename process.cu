@@ -192,7 +192,8 @@ int init_process(conf_t *conf)
   conf->gridsize_sum1_fold.x = NCHAN_FOLD;
   conf->gridsize_sum1_fold.y = conf->stream_ndf * NPOL_SAMP;
   conf->gridsize_sum1_fold.z = 1;
-  conf->blocksize_sum1_fold.x = NSAMP_DF / 2;
+  //conf->blocksize_sum1_fold.x = NSAMP_DF / 2;  // Here I assume that CUFFT_NX1 is equal to CUFFT_NX2, which is not true in some cases
+  conf->blocksize_sum1_fold.x = NSAMP_DF * CUFFT_NX2 / (2 * CUFFT_NX1);  // This is the right setup if CUFFT_NX2 is not equal to CUFFT_NX1
   conf->blocksize_sum1_fold.y = 1;
   conf->blocksize_sum1_fold.z = 1;
   

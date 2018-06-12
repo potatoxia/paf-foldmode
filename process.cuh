@@ -17,7 +17,7 @@
 
 #define CUFFT_NX64
 #define FOLD_MODE    
-//#define FOLD_NPOW2
+#define FOLD_NPOW2
 
 #define DADA_HDR_SIZE         4096
 #define NCHK_NIC              48   // How many frequency chunks we will receive, we should read the number from metadata
@@ -41,7 +41,7 @@
 #define CUFFT_MOD1            13              // Set to remove oversampled data
 #define NCHAN_KEEP1           27              // (OSAMP_RATEI * CUFFT_NX1)
 
-#if defined (FOLD_MODE) && defined(FOLD_NPOW2)
+#if defined (FOLD_MODE) && defined (FOLD_NPOW2)
 #define CUFFT_NX2             27
 #define CUFFT_MOD2            14              
 #define NCHAN_KEEP2           8748            // (CUFFT_NX2 * NCHAN_FOLD) for fold mode, a good number which is divisible by NCHAN_SEARCH for search mode
@@ -68,7 +68,7 @@
 #define CUFFT_NX1             64
 #define CUFFT_MOD1            27              // Set to remove oversampled data
 #define NCHAN_KEEP1           54              // (OSAMP_RATEI * CUFFT_NX1)
-#if defined (FOLD_MODE) && defined(FOLD_NPOW2)
+#if defined (FOLD_MODE) && defined (FOLD_NPOW2)
 #define CUFFT_NX2             54
 #define CUFFT_MOD2            27              // CUFFT_NX2 / 2
 #define NCHAN_KEEP2           17496            // (CUFFT_NX2 * NCHAN_FOLD) for fold mode, a good number which is divisible by NCHAN_SEARCH for search mode
@@ -90,6 +90,8 @@
 #define NCHAN_RATEI           1.107421875     // (NCHAN_KEEP1 * NCHK_NIC * NCHAN_CHK)/NCHAN_KEEP2
 #endif
 #endif
+
+#define FOLD_SCALE            ((NBYTE_IN - NBYTE_OUT_FOLD) * 8 + (int)__log2f(CUFFT_NX1))
 
 #define SCL_INT8              127.0f          // For int8_t, for fold mode
 #define SCL_UINT8             255.0f          // For uint8_t, for search mode
