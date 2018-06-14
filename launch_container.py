@@ -4,7 +4,8 @@ import os
 
 length  = 20
 numa    = 1
-memsize = 80000000000
+#memsize = 80000000000
+memsize = 100000000000
 hdir    = '/home/pulsar/'
 ddir    = '/beegfs/DENG/docker'
 uid     = 50000

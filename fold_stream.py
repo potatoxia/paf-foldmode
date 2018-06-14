@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 
-# ./fold_stream.py -a fold_stream.conf -b 0 -c 10 -d /beegfs/DENG/docker/ -e J0218+4232 -f all 
+# ./fold_stream.py -a fold_stream.conf -b 0 -c 10 -d /beegfs/DENG/docker/ -e J0218+4232 -f 1
 # tempo2 -f mypar.par -pred "sitename mjd1 mjd2 freq1 freq2 ntimecoeff nfreqcoeff seg_length"
+
+##### The configuration here and header file should be updated according to the process software we use;
 
 # I made assumption here:
 # 1. scale calculation uses only one buffer block, no matter how big the block is;
@@ -66,7 +68,7 @@ directory    = args.directory[0]
 psrname      = args.psrname[0]
 if(args.visiblegpu[0]==''):
     multi_gpu = 1;
-if(args.visiblegpu[0]=='all'):
+elif(args.visiblegpu[0]=='all'):
     multi_gpu = 1;
 else:
     multi_gpu = 0;
@@ -110,6 +112,7 @@ process_nstream    = int(ConfigSectionMap("ProcessConf")['nstream'])
 #process_rbufsz     = nsamp_df * process_nstream * process_ndf * npol_samp * ndim_pol * process_nchanfinal * process_byte
 process_osampratei = float(ConfigSectionMap("ProcessConf")['osamp_ratei'])
 process_nchanratei = float(ConfigSectionMap("ProcessConf")['nchan_ratei'])
+process_nchanratei = 28.0/27.0
 process_rbufsz     = int(0.5 * capture_rbufsz * process_osampratei / process_nchanratei)
 
 process_hfname     = ConfigSectionMap("ProcessConf")['hfname']

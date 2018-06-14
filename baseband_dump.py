@@ -3,7 +3,7 @@
 # I made assumption here:
 # 1. scale calculation uses only one buffer block, no matter how big the block is;
 # 2. nic ip end with 1 and 2, numa node is 0 and 1;
-# ./baseband_dump.py -c baseband_dump.conf -n 1 -l 27 -d 1
+# ./baseband_dump.py -c baseband_dump.conf -n 0 -l 27 -d 1
 
 import os, time, threading, ConfigParser, argparse, socket, json, struct, sys
 
@@ -91,7 +91,8 @@ dbdisk_dir     = ConfigSectionMap("DbdiskConf")['dir']
 
 def capture():
     time.sleep(sleep_time)
-    os.system("./paf_capture -k {:s} -l {:f} -n {:d} -h {:s} -f {:f} -e {:s} -s {:s} -r {:d} -d {:d}".format(capture_key, length, nic, capture_hfname, freq, capture_efname, capture_sod, capture_ndf, capture_hdr))
+    #os.system("./paf_capture -a {:s} -j {:f} -e {:d} -f {:s} -i {:f} -g {:s} -b {:s} -c {:d} -d {:d} -k {:s}".format(capture_key, length, nic, capture_hfname, freq, capture_efname, capture_sod, capture_ndf, capture_hdr, dbdisk_dir))
+    os.system("./paf_capture -a {:s} -b {:s} -c {:d} -d {:d} -e {:d} -f {:s} -g {:s} -i {:f} -j {:f} -k {:s}".format(capture_key, capture_sod, capture_ndf, capture_hdr, nic, capture_hfname, capture_efname, freq, length, dbdisk_dir))
 
 def dbdisk():
     os.system('dada_dbdisk -b {:d} -k {:s} -D {:s} -W'.format(dbdisk_cpu, capture_key, dbdisk_dir))
